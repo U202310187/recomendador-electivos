@@ -25,6 +25,17 @@ def run_query(cypher, **params):
 
 @app.get("/health")
 def health():
+    """
+    Health check
+    ---
+    tags:
+      - Util
+    responses:
+      200:
+        description: OK
+        examples:
+          application/json: { "ok": true }
+    """
     try:
         run_query("RETURN 1 AS ok")
         return jsonify({"ok": True})
@@ -33,6 +44,30 @@ def health():
 
 @app.get("/cursos")
 def get_cursos():
+    """
+    Lista de cursos
+    ---
+    tags:
+      - Cursos
+    parameters:
+      - in: query
+        name: tipo
+        type: string
+        required: false
+        description: obligatorio | electivo
+      - in: query
+        name: mencion
+        type: string
+        required: false
+      - in: query
+        name: limit
+        type: integer
+        required: false
+        default: 50
+    responses:
+      200:
+        description: Lista de cursos
+    """
     """?tipo=obligatorio|electivo  ?mencion=...  ?limit=50"""
     tipo = request.args.get("tipo")
     mencion = request.args.get("mencion")
@@ -57,6 +92,15 @@ def get_cursos():
 
 @app.get("/temas")
 def get_temas():
+    """
+    Lista de temas
+    ---
+    tags:
+      - Temas
+    responses:
+      200:
+        description: Lista de temas
+    """
     q = """
     MATCH (t:Tema)
     RETURN t{.*} AS tema
@@ -66,6 +110,15 @@ def get_temas():
 
 @app.get("/menciones")
 def get_menciones():
+    """
+    Lista de menciones
+    ---
+    tags:
+      - Menciones
+    responses:
+      200:
+        description: Lista de menciones
+    """
     q = """
     MATCH (m:Mencion)
     RETURN m{.*} AS mencion
@@ -75,6 +128,22 @@ def get_menciones():
 
 @app.get("/cursos/<id_curso>")
 def get_curso(id_curso):
+    """
+    Detalle de curso
+    ---
+    tags:
+      - Cursos
+    parameters:
+      - in: path
+        name: id_curso
+        type: string
+        required: true
+    responses:
+      200:
+        description: Curso encontrado
+      404:
+        description: No encontrado
+    """
     q = """
     MATCH (c:Curso {id:$id})
     RETURN c{.*} AS curso
@@ -84,6 +153,27 @@ def get_curso(id_curso):
 
 @app.get("/cursos/<id_curso>/temas")
 def get_temas_de_curso(id_curso):
+    """
+    Temas de un curso
+    ---
+    tags:
+      - Cursos
+    parameters:
+      - in: path
+        name: id_curso
+        type: string
+        required: true
+        description: ID del curso
+      - in: query
+        name: rel_type
+        type: string
+        default: Directed
+        required: false
+        description: Tipo de relación usado en r.type
+    responses:
+      200:
+        description: Lista de temas asociados al curso
+    """
     rel_type = request.args.get("rel_type", "Directed")
     q = """
     MATCH (c:Curso {id:$id})-[r:REL]->(t:Tema)
@@ -95,6 +185,27 @@ def get_temas_de_curso(id_curso):
 
 @app.get("/menciones/<nombre>/cursos")
 def get_cursos_por_mencion(nombre):
+    """
+    Cursos asociados a una mención
+    ---
+    tags:
+      - Menciones
+    parameters:
+      - in: path
+        name: nombre
+        type: string
+        required: true
+        description: Nombre de la mención
+      - in: query
+        name: rel_type
+        type: string
+        default: Directed
+        required: false
+        description: Tipo de relación usado en r.type
+    responses:
+      200:
+        description: Lista de cursos asociados a la mención
+    """
     rel_type = request.args.get("rel_type", "Directed")
     q = """
     MATCH (m:Mencion {nombre:$nom})<-[r:REL]-(c:Curso)
@@ -106,6 +217,21 @@ def get_cursos_por_mencion(nombre):
 
 @app.get("/cursos/<id_curso>/relaciones")
 def get_relaciones_de_curso(id_curso):
+    """
+    Relaciones de un curso (vecinos + etiqueta de relación)
+    ---
+    tags:
+      - Cursos
+    parameters:
+      - in: path
+        name: id_curso
+        type: string
+        required: true
+        description: ID del curso
+    responses:
+      200:
+        description: Vecinos y relaciones del curso
+    """
     """Devuelve vecinos y la etiqueta real de la relación almacenada en r.type"""
     q = """
     MATCH (c:Curso {id:$id})-[r]->(n)
@@ -115,6 +241,26 @@ def get_relaciones_de_curso(id_curso):
 
 @app.get("/search")
 def search():
+    """
+    Búsqueda por texto
+    ---
+    tags:
+      - Util
+    parameters:
+      - in: query
+        name: q
+        type: string
+        required: false
+        default: ""
+      - in: query
+        name: limit
+        type: integer
+        required: false
+        default: 20
+    responses:
+      200:
+        description: Resultados de búsqueda
+    """
     """?q=texto ?limit=20 — busca por nombre de curso/tema/mención"""
     qtext = request.args.get("q", "")
     limit = int(request.args.get("limit", 20))
@@ -136,6 +282,15 @@ def search():
 
 @app.get("/stats")
 def stats():
+    """
+    Estadísticas generales
+    ---
+    tags:
+      - Util
+    responses:
+      200:
+        description: Conteos de nodos y relaciones
+    """
     q = """
     CALL {
       MATCH (c:Curso) RETURN count(c) AS cursos
@@ -155,6 +310,33 @@ def stats():
 
 @app.get("/grafo")
 def grafo():
+    """
+    Grafo simplificado para visualización
+    ---
+    tags:
+      - Grafo
+    parameters:
+      - in: query
+        name: limit
+        type: integer
+        required: false
+        default: 200
+        description: Límite de relaciones a devolver para evitar cargas grandes
+    responses:
+      200:
+        description: Nodos y relaciones para visualización
+        examples:
+          application/json:
+            nodes:
+              - id: CURSO001
+                nombre: Matemática I
+                labels: ["Curso"]
+            edges:
+              - from: CURSO001
+                to: TEMA045
+                rel: REL
+                relCSV: incluye_tema
+    """
     """?limit=200  — devuelve nodos + relaciones simples para pintar en el front"""
     limit = int(request.args.get("limit", 200))
     q = """
@@ -176,6 +358,38 @@ def grafo():
 
 @app.get("/alumnos")
 def get_alumnos():
+    """
+    Lista de alumnos (paginada)
+    ---
+    tags:
+      - Alumnos
+    parameters:
+      - in: query
+        name: q
+        type: string
+        required: false
+      - in: query
+        name: limit
+        type: integer
+        default: 50
+      - in: query
+        name: page
+        type: integer
+        default: 1
+      - in: query
+        name: sort
+        type: string
+        default: id
+        enum: [id, nombre]
+      - in: query
+        name: order
+        type: string
+        default: asc
+        enum: [asc, desc]
+    responses:
+      200:
+        description: Lista de alumnos
+    """
     """
     ?q=texto
     ?limit=50
@@ -209,6 +423,22 @@ def get_alumnos():
 
 @app.get("/alumnos/<id_alumno>")
 def get_alumno(id_alumno):
+    """
+    Detalle de alumno
+    ---
+    tags:
+      - Alumnos
+    parameters:
+      - in: path
+        name: id_alumno
+        type: string
+        required: true
+    responses:
+      200:
+        description: Alumno encontrado
+      404:
+        description: No encontrado
+    """
     q = """
     MATCH (a:Alumno {id:$id})
     RETURN a{.*} AS alumno
@@ -218,6 +448,36 @@ def get_alumno(id_alumno):
 
 @app.get("/alumnos/<id_alumno>/cursos")
 def get_cursos_de_alumno(id_alumno):
+    """
+    Cursos vinculados a un alumno
+    ---
+    tags:
+      - Alumnos
+    parameters:
+      - name: id_alumno
+        in: path
+        type: string
+        required: true
+        description: ID del alumno (ej. "ALU_001")
+      - name: rel_type
+        in: query
+        type: string
+        required: false
+        default: Directed
+        description: Tipo lógico de relación almacenado en r.type
+    responses:
+      200:
+        description: Lista de cursos relacionados con el alumno
+        examples:
+          application/json:
+            - curso:
+                id: CURSO001
+                nombre: Matemática I
+                tipo_curso: obligatorio
+              relacion:
+                type: Directed
+                label: incluye_tema
+    """
     """Cursos vinculados al alumno por cualquier dirección. Usa r.type='Directed' por defecto."""
     rel_type = request.args.get("rel_type", "Directed")
     q = """
@@ -230,6 +490,32 @@ def get_cursos_de_alumno(id_alumno):
 
 @app.get("/alumnos/<id_alumno>/temas")
 def get_temas_de_alumno(id_alumno):
+    """
+    Temas alcanzados por un alumno a través de cursos
+    ---
+    tags:
+      - Alumnos
+    parameters:
+      - name: id_alumno
+        in: path
+        type: string
+        required: true
+        description: ID del alumno
+      - name: rel_type
+        in: query
+        type: string
+        required: false
+        default: Directed
+        description: Tipo lógico de relación almacenado en r.type
+    responses:
+      200:
+        description: Lista de temas vinculados al alumno
+        examples:
+          application/json:
+            - tema:
+                id: TEMA045
+                nombre: Derivadas
+    """
     """Temas alcanzados por el alumno vía cursos relacionados."""
     rel_type = request.args.get("rel_type", "Directed")
     q = """
@@ -244,6 +530,32 @@ def get_temas_de_alumno(id_alumno):
 
 @app.get("/alumnos/<id_alumno>/menciones")
 def get_menciones_de_alumno(id_alumno):
+    """
+    Menciones alcanzadas por un alumno
+    ---
+    tags:
+      - Alumnos
+    parameters:
+      - name: id_alumno
+        in: path
+        type: string
+        required: true
+        description: ID del alumno (ej. "ALU_001")
+      - name: rel_type
+        in: query
+        type: string
+        required: false
+        default: Directed
+        description: Tipo lógico definido en r.type (por defecto 'Directed')
+    responses:
+      200:
+        description: Lista de menciones relacionadas al alumno
+        examples:
+          application/json:
+            - mencion:
+                id: MENC001
+                nombre: Data Science & Analytics
+    """
     rel_type = request.args.get("rel_type", "Directed")
     q = """
     MATCH (a:Alumno {id:$id})-[r1:REL]-(c:Curso)
@@ -257,6 +569,43 @@ def get_menciones_de_alumno(id_alumno):
 
 @app.get("/alumnos/<id_alumno>/recomendaciones")
 def recomendar_cursos(id_alumno):
+    """
+    Recomendación simple de cursos para un alumno
+    ---
+    tags:
+      - Recomendador
+    parameters:
+      - name: id_alumno
+        in: path
+        type: string
+        required: true
+        description: ID del alumno (ej. "ALU_001")
+      - name: rel_type
+        in: query
+        type: string
+        required: false
+        default: Directed
+        description: Tipo de relación lógica almacenada en r.type
+      - name: limit
+        in: query
+        type: integer
+        required: false
+        default: 10
+        description: Número máximo de cursos recomendados
+    responses:
+      200:
+        description: Cursos sugeridos con base en coincidencias de temas
+        examples:
+          application/json:
+            - curso:
+                id: CUR_ELEC045
+                nombre: Introducción al Machine Learning
+                tipo_curso: electivo
+              temasCompartidos: 6
+              menciones:
+                - Data Science & Analytics
+                - Computación Científica
+    """
     rel_type = request.args.get("rel_type", "Directed")
     limit = int(request.args.get("limit", 10))
     q = """
@@ -284,6 +633,47 @@ def recomendar_cursos(id_alumno):
 
 @app.get("/alumnos/<id_alumno>/grafo")
 def grafo_alumno(id_alumno):
+    """
+    Subgrafo del alumno (nodos y aristas para visualización)
+    ---
+    tags:
+      - Grafo
+    parameters:
+      - name: id_alumno
+        in: path
+        type: string
+        required: true
+        description: ID del alumno (ej. "ALU_001")
+      - name: rel_type
+        in: query
+        type: string
+        required: false
+        default: Directed
+        description: Valor lógico almacenado en r.type a filtrar
+      - name: limit
+        in: query
+        type: integer
+        required: false
+        default: 300
+        description: Límite de relaciones para acotar el subgrafo
+    responses:
+      200:
+        description: Nodos y aristas del subgrafo del alumno
+        examples:
+          application/json:
+            nodes:
+              - id: ALU_001
+                nombre: "Juan Pérez"
+                labels: ["Alumno"]
+              - id: CUR_010
+                nombre: "Algoritmos"
+                labels: ["Curso"]
+            edges:
+              - from: ALU_001
+                to: CUR_010
+                rel: "REL"
+                relCSV: "inscripcion"
+    """
     rel_type = request.args.get("rel_type", "Directed")
     limit = int(request.args.get("limit", 300))
     q = """
@@ -301,6 +691,36 @@ def grafo_alumno(id_alumno):
 
 @app.get("/alumnos/<id_alumno>/recomendar")
 def recomendar(id_alumno):
+    """
+    Recomendación ponderada de electivos para un alumno
+    ---
+    tags:
+      - Recomendador
+    parameters:
+      - name: id_alumno
+        in: path
+        type: string
+        required: true
+        description: ID del alumno (ej. "ALU_001")
+      - name: limit
+        in: query
+        type: integer
+        required: false
+        default: 20
+        description: Número máximo de cursos recomendados
+    responses:
+      200:
+        description: Lista de electivos con métricas de preparación y afinidad
+        examples:
+          application/json:
+            - curso:
+                id: CUR_ELEC_032
+                nombre: "Minería de Datos"
+                tipo_curso: "electivo"
+              prep: 0.78
+              affinity: 0.62
+              score: 0.71
+    """
     limit = int(request.args.get("limit", 20))
     q = """
     //Cursos obligatorios aprobados por el alumno
