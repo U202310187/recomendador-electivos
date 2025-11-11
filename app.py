@@ -29,7 +29,7 @@ def health():
     Health check
     ---
     tags:
-      - Util
+      - Sistema
     responses:
       200:
         description: OK
@@ -239,54 +239,13 @@ def get_relaciones_de_curso(id_curso):
     """
     return jsonify(run_query(q, id=id_curso))
 
-@app.get("/search")
-def search():
-    """
-    Búsqueda por texto
-    ---
-    tags:
-      - Util
-    parameters:
-      - in: query
-        name: q
-        type: string
-        required: false
-        default: ""
-      - in: query
-        name: limit
-        type: integer
-        required: false
-        default: 20
-    responses:
-      200:
-        description: Resultados de búsqueda
-    """
-    """?q=texto ?limit=20 — busca por nombre de curso/tema/mención"""
-    qtext = request.args.get("q", "")
-    limit = int(request.args.get("limit", 20))
-    q = """
-    CALL {
-      MATCH (c:Curso)  WHERE toLower(c.nombre)  CONTAINS toLower($q)
-      RETURN 'curso' AS tipo, c.id AS id, c.nombre AS nombre
-      UNION
-      MATCH (t:Tema)   WHERE toLower(t.nombre)  CONTAINS toLower($q)
-      RETURN 'tema'  AS tipo, t.id AS id, t.nombre AS nombre
-      UNION
-      MATCH (m:Mencion) WHERE toLower(m.nombre) CONTAINS toLower($q)
-      RETURN 'mencion' AS tipo, m.id AS id, m.nombre AS nombre
-    }
-    RETURN tipo,id,nombre
-    LIMIT $limit
-    """
-    return jsonify(run_query(q, q=qtext, limit=limit))
-
 @app.get("/stats")
 def stats():
     """
     Estadísticas generales
     ---
     tags:
-      - Util
+      - Sistema
     responses:
       200:
         description: Conteos de nodos y relaciones
@@ -523,54 +482,16 @@ def get_temas_de_alumno(id_alumno):
     WHERE r1.type = $rel
     MATCH (c)-[r2:REL]->(t:Tema)
     WHERE r2.type = $rel
-    RETURN DISTINCT t{.*} AS tema
+    WITH DISTINCT t
     ORDER BY t.nombre
-    """
-    return jsonify(run_query(q, id=id_alumno, rel=rel_type))
-
-@app.get("/alumnos/<id_alumno>/menciones")
-def get_menciones_de_alumno(id_alumno):
-    """
-    Menciones alcanzadas por un alumno
-    ---
-    tags:
-      - Alumnos
-    parameters:
-      - name: id_alumno
-        in: path
-        type: string
-        required: true
-        description: ID del alumno (ej. "ALU_001")
-      - name: rel_type
-        in: query
-        type: string
-        required: false
-        default: Directed
-        description: Tipo lógico definido en r.type (por defecto 'Directed')
-    responses:
-      200:
-        description: Lista de menciones relacionadas al alumno
-        examples:
-          application/json:
-            - mencion:
-                id: MENC001
-                nombre: Data Science & Analytics
-    """
-    rel_type = request.args.get("rel_type", "Directed")
-    q = """
-    MATCH (a:Alumno {id:$id})-[r1:REL]-(c:Curso)
-    WHERE r1.type = $rel
-    MATCH (c)-[r2:REL]->(m:Mencion)
-    WHERE r2.type = $rel
-    RETURN DISTINCT m{.*} AS mencion
-    ORDER BY m.nombre
+    RETURN t{.*} AS tema
     """
     return jsonify(run_query(q, id=id_alumno, rel=rel_type))
 
 @app.get("/alumnos/<id_alumno>/recomendaciones")
 def recomendar_cursos(id_alumno):
     """
-    Recomendación simple de cursos para un alumno
+    Recomendación simple de cursos electivos basada en la intersección de temas con los cursos del alumno.
     ---
     tags:
       - Recomendador
@@ -608,8 +529,8 @@ def recomendar_cursos(id_alumno):
     """
     rel_type = request.args.get("rel_type", "Directed")
     limit = int(request.args.get("limit", 10))
+
     q = """
-   
     MATCH (a:Alumno {id:$id})-[r1:REL]-(c:Curso)
     WHERE r1.type = $rel
     WITH a, collect(DISTINCT c) AS cursosAlumno
@@ -618,8 +539,10 @@ def recomendar_cursos(id_alumno):
     WHERE rc.type = $rel AND c1 IN cursosAlumno
     WITH a, cursosAlumno, collect(DISTINCT t) AS temasAlumno
 
-    MATCH (c2:Curso)-[rct:REL]->(t2:Tema)
-    WHERE rct.type = $rel AND t2 IN temasAlumno AND NOT c2 IN cursosAlumno
+    MATCH (c2:Curso {tipo_curso:'electivo'})-[rct:REL]->(t2:Tema)
+    WHERE rct.type = $rel
+      AND t2 IN temasAlumno
+      AND NOT c2 IN cursosAlumno
 
     OPTIONAL MATCH (c2)-[rm:REL]->(m:Mencion)
     WHERE rm.type = $rel
@@ -678,21 +601,30 @@ def grafo_alumno(id_alumno):
     limit = int(request.args.get("limit", 300))
     q = """
     MATCH (a:Alumno {id:$id})-[r1:REL]-(n1)
-    WHERE r1.type = $rel
-    OPTIONAL MATCH (n1)-[r2:REL]->(n2)
-    WHERE r2.type = $rel
-    WITH a, collect(DISTINCT n1) AS n1s, collect(DISTINCT r1) + collect(DISTINCT r2) AS rels, collect(DISTINCT n2) AS n2s
-    WITH a, apoc.coll.toSet(n1s + n2s) AS nodes, rels
-    RETURN
-      [x IN nodes | x{.id, .nombre, labels:labels(x)}] AS nodes,
-      [r IN rels | {from:startNode(r).id, to:endNode(r).id, rel:type(r), relCSV:r.type}] AS edges
+WHERE r1.type = $rel
+WITH a, r1, n1
+LIMIT $limit
+
+OPTIONAL MATCH (n1)-[r2:REL]->(n2)
+WHERE r2.type = $rel
+
+WITH a,
+     collect(DISTINCT r1) + collect(DISTINCT r2) AS rels,
+     collect(DISTINCT n1) + collect(DISTINCT n2) AS allNodes
+
+UNWIND allNodes AS n
+WITH collect(DISTINCT n) AS nodes, rels
+
+RETURN
+  [x IN nodes | x{.id, .nombre, labels:labels(x)}] AS nodes,
+  [r IN rels  | {from:startNode(r).id, to:endNode(r).id, rel:type(r), relCSV:r.type}] AS edges
     """
     return jsonify(run_query(q, id=id_alumno, rel=rel_type, limit=limit))
 
 @app.get("/alumnos/<id_alumno>/recomendar")
 def recomendar(id_alumno):
     """
-    Recomendación ponderada de electivos para un alumno
+    Calcula recomendaciones de electivos combinando la preparación del alumno (en prerrequisitos) y la afinidad temática.
     ---
     tags:
       - Recomendador
@@ -724,65 +656,182 @@ def recomendar(id_alumno):
     limit = int(request.args.get("limit", 20))
     q = """
     //Cursos obligatorios aprobados por el alumno
-    MATCH (a:Alumno {id:$id})-[r_ins:REL {label:'inscripcion'}]->(c_obl:Curso {tipo_curso:'obligatorio'})
-    WITH a, c_obl, coalesce(r_ins.nota, 0.0) AS nota
+    MATCH (a:Alumno {id:$id})-[r:REL {label:'inscripcion'}]->(co:Curso {tipo_curso:'obligatorio'})
+    WITH a, co, coalesce(toFloat(r.nota), -1) AS nota
+    WHERE nota >= 11 OR toLower(coalesce(r.estado,'')) IN ['aprobado','aprobada','passed']
 
-    //Cálculo de Fortaleza (w_mastery)
-    WITH a, c_obl,
-         CASE 
-            WHEN ( (nota-13)/7.0 ) < 0 THEN 0.0
-            WHEN ( (nota-13)/7.0 ) > 1 THEN 1.0
-            ELSE (nota-13)/7.0
-         END AS frac
-    WITH a, c_obl, (frac * frac) AS w_mastery
+    // Fortaleza
+    WITH a, co,
+     CASE
+       WHEN ((nota-13)/7.0) < 0 THEN 0.0
+       WHEN ((nota-13)/7.0) > 1 THEN 1.0
+       ELSE (nota-13)/7.0
+     END AS frac
+    WITH a, co, (frac*frac) AS w_mastery
 
-    //Temas de cada obligatorio
-    OPTIONAL MATCH (c_obl)-[:REL {label:'incluye_tema'}]->(t:Tema)
-    WITH a, c_obl, w_mastery, collect(DISTINCT t) AS temasObl
-    WITH a, collect({curso:c_obl, w:w_mastery, temas:temasObl}) AS obligs
+    // Familias del obligatorio
+    OPTIONAL MATCH (co)-[:REL {label:'incluye_tema'}]->(to:Tema)
+    WITH a, co, w_mastery, collect(DISTINCT toLower(to.family)) AS famObl
+    WHERE size(famObl) > 0
+    WITH a, collect({curso:co, w:w_mastery, fam:famObl}) AS obligs
+    WHERE size(obligs) > 0
 
-    //Electivos candidatos y sus temas
+    // Electivos y familias (propios + heredados si los añadiste)
     MATCH (ce:Curso {tipo_curso:'electivo'})
     OPTIONAL MATCH (ce)-[:REL {label:'incluye_tema'}]->(te:Tema)
-    WITH a, obligs, ce, collect(DISTINCT te) AS temasE
+    WITH a, obligs, ce, collect(DISTINCT toLower(te.family)) AS famE
+    WHERE size(famE) > 0
 
-    //Cálculo de Preparación (promedio de fortaleza en prerrequisitos)
+    // Preparación usando prerrequisitos
     OPTIONAL MATCH (co:Curso {tipo_curso:'obligatorio'})-[:REL {label:'prerrequisito_obl_elec'}]->(ce)
-    WITH a, obligs, ce, temasE, collect(DISTINCT co) AS prereqs
-    WITH a, obligs, ce, temasE,
-         [x IN obligs WHERE x.curso IN prereqs | x.w] AS wlist
-    WITH a, obligs, ce, temasE,
-         CASE WHEN size(wlist)=0 THEN 0.0
-              ELSE reduce(s=0.0, v IN wlist | s+v) / toFloat(size(wlist))
-         END AS prep
+    WITH a, obligs, ce, famE, collect(DISTINCT co) AS prereqs
+    WITH a, obligs, ce, famE, [x IN obligs WHERE x.curso IN prereqs | x.w] AS wlist
+    WITH a, obligs, ce, famE,
+     CASE WHEN size(wlist)=0 THEN 0.0
+          ELSE reduce(s=0.0, v IN wlist | s+v) / toFloat(size(wlist))
+     END AS prep
 
-    //Cálculo de similitud temática entre cursos (Jaccard ponderado)
-    //size([t IN ob.temas WHERE t IN temasE]) AS inter, [ES EL NUMERADOR]
-    //size(ob.temas) + size(temasE) - size([t IN ob.temas WHERE t IN temasE]) AS uni [ES EL DENOMINADOR]
+    // Afinidad (Jaccard ponderado por familias)
     UNWIND obligs AS ob
-    WITH ce, prep, ob, temasE,
-         size([t IN ob.temas WHERE t IN temasE]) AS inter,
-         size(ob.temas) + size(temasE) - size([t IN ob.temas WHERE t IN temasE]) AS uni
+    WITH ce, prep, ob, famE,
+     size([k IN ob.fam WHERE k IN famE]) AS inter,
+     size(ob.fam) + size(famE) - size([k IN ob.fam WHERE k IN famE]) AS uni,
+     ob.w AS w
     WITH ce, prep,
-         CASE WHEN uni = 0 THEN 0.0 ELSE inter / toFloat(uni) END AS sim_jaccard,
-         CASE WHEN uni = 0 THEN 0.0 ELSE ob.w * (inter / toFloat(uni)) END AS part
+     CASE WHEN uni = 0 THEN 0.0 ELSE inter / toFloat(uni) END AS sim_jaccard,
+     CASE WHEN uni = 0 THEN 0.0 ELSE w * (inter / toFloat(uni)) END AS part
     WITH ce, prep, sum(part) AS numerator, sum(sim_jaccard) AS denominator
-    WITH ce, prep,
-         CASE WHEN denominator = 0 THEN 0.0 
-              ELSE numerator / denominator 
-         END AS affinity
+    WITH ce, prep, CASE WHEN denominator=0 THEN 0.0 ELSE numerator/denominator END AS affinity
 
-    //Score final - con Order By se aplica Mergesort
     RETURN
-      ce{.*} AS curso,
-      round(prep*100)/100.0 AS prep,
-      round(affinity*100)/100.0 AS affinity,
-      round((0.6*prep + 0.4*affinity)*100)/100.0 AS score
+    ce{.*} AS curso,
+    round(prep*100)/100.0     AS prep,
+    round(affinity*100)/100.0 AS affinity,
+    round((0.6*prep + 0.4*affinity)*100)/100.0 AS score
     ORDER BY score DESC, curso.nombre
     LIMIT $limit
     """
     return jsonify(run_query(q, id=id_alumno, limit=limit))
 
+@app.get("/alumnos/<id_alumno>/recomendacion")
+def recomendacion(id_alumno):
+    """
+    Recomendación que limita electivos a las mismas facultades del alumno y permite fijar un umbral mínimo de afinidad.
+    ---
+    tags:
+      - Recomendador
+    parameters:
+      - name: id_alumno
+        in: path
+        type: string
+        required: true
+        description: ID del alumno (p.ej. "A_34")
+      - name: limit
+        in: query
+        type: integer
+        required: false
+        default: 20
+        description: Número máximo de cursos recomendados
+      - name: afinidad_min
+        in: query
+        type: number
+        required: false
+        default: 0.30
+        description: Umbral mínimo de afinidad (0..1) para filtrar recomendaciones
+    responses:
+      200:
+        description: Lista de electivos recomendados con métricas de preparación y afinidad
+        examples:
+          application/json:
+            - curso:
+                id: "C_1403"
+                nombre: "ELEC-03-203"
+                tipo_curso: "electivo"
+              prep: 0.25
+              affinity: 0.75
+              score: 0.45
+    """
+    limit = int(request.args.get("limit", 20))
+    afinidad_min = float(request.args.get("afinidad_min", 0.30))
+
+    q = """
+    // RECOMENDADOR POR FAMILIAS + FILTRO DE RELEVANCIA (sin APOC)
+    MATCH (a:Alumno {id:$id})-[r:REL {label:'inscripcion'}]->(co:Curso {tipo_curso:'obligatorio'})
+    WITH a, co, coalesce(toFloat(r.nota), -1) AS nota
+    WHERE nota >= 11 OR toLower(coalesce(r.estado,'')) IN ['aprobado','aprobada','passed']
+
+    // Fortaleza
+    WITH a, co,
+         CASE
+           WHEN ((nota-13)/7.0) < 0 THEN 0.0
+           WHEN ((nota-13)/7.0) > 1 THEN 1.0
+           ELSE (nota-13)/7.0
+         END AS frac
+    WITH a, co, (frac*frac) AS w_mastery
+
+    // Familias del obligatorio + facultades del alumno
+    OPTIONAL MATCH (co)-[:REL {label:'incluye_tema'}]->(to:Tema)
+    OPTIONAL MATCH (co)<-[:REL {label:'ofrece'}]-(ca1:Carrera)<-[:REL {label:'pertenece'}]-(fa1:Facultad)
+    WITH a, co, w_mastery,
+         collect(DISTINCT toLower(to.family)) AS famObl,
+         collect(DISTINCT fa1.id) AS facsObl
+    WHERE size(famObl) > 0
+
+    // Junta obligatorios y lista de facultades (aplanado sin APOC)
+    WITH a,
+         collect({curso:co, w:w_mastery, fam:famObl}) AS obligs,
+         collect(DISTINCT facsObl) AS facLists
+    WITH a, obligs,
+         reduce(acc=[], lst IN facLists | acc + lst) AS facsAll
+    WITH a, obligs, [x IN facsAll WHERE x IS NOT NULL] AS alumnoFacIds
+    WHERE size(obligs) > 0
+
+    // Electivos ofrecidos en las MISMAS facultades
+    MATCH (ce:Curso {tipo_curso:'electivo'})
+    OPTIONAL MATCH (ca2:Carrera)-[:REL {label:'ofrece'}]->(ce)
+    OPTIONAL MATCH (fa2:Facultad)-[:REL {label:'pertenece'}]->(ca2)
+    WITH a, obligs, alumnoFacIds, ce, collect(DISTINCT fa2.id) AS facCe
+    WHERE size([f IN facCe WHERE f IN alumnoFacIds]) > 0
+
+    // Familias de temas del electivo
+    OPTIONAL MATCH (ce)-[:REL {label:'incluye_tema'}]->(te:Tema)
+    WITH a, obligs, ce, collect(DISTINCT toLower(te.family)) AS famE
+    WHERE size(famE) > 0
+
+    // Preparación por prerrequisitos
+    OPTIONAL MATCH (co:Curso {tipo_curso:'obligatorio'})-[:REL {label:'prerrequisito_obl_elec'}]->(ce)
+    WITH a, obligs, ce, famE, collect(DISTINCT co) AS prereqs
+    WITH a, obligs, ce, famE, [x IN obligs WHERE x.curso IN prereqs | x.w] AS wlist
+    WITH a, obligs, ce, famE,
+         CASE WHEN size(wlist)=0 THEN 0.0
+              ELSE reduce(s=0.0, v IN wlist | s+v) / toFloat(size(wlist))
+         END AS prep
+
+    // Afinidad (Jaccard ponderado por familias)
+    UNWIND obligs AS ob
+    WITH ce, prep, ob, famE,
+         size([k IN ob.fam WHERE k IN famE]) AS inter,
+         size(ob.fam) + size(famE) - size([k IN ob.fam WHERE k IN famE]) AS uni,
+         ob.w AS w
+    WITH ce, prep,
+         CASE WHEN uni = 0 THEN 0.0 ELSE inter / toFloat(uni) END AS sim_jaccard,
+         CASE WHEN uni = 0 THEN 0.0 ELSE w * (inter / toFloat(uni)) END AS part
+    WITH ce, prep, sum(part) AS numerator, sum(sim_jaccard) AS denominator
+    WITH ce, prep, CASE WHEN denominator=0 THEN 0.0 ELSE numerator/denominator END AS affinity
+
+    // Filtro de afinidad mínima
+    WHERE affinity >= $afinidad_min
+
+    RETURN
+      ce{.*} AS curso,
+      round(prep*100)/100.0     AS prep,
+      round(affinity*100)/100.0 AS affinity,
+      round((0.6*prep + 0.4*affinity)*100)/100.0 AS score
+    ORDER BY score DESC, curso.nombre
+    LIMIT $limit
+    """
+
+    return jsonify(run_query(q, id=id_alumno, limit=limit, afinidad_min=afinidad_min))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
