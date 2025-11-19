@@ -1,5 +1,39 @@
-.env
-.venv/
+# =========
+# Python
+# =========
 __pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# =========
+# Neo4j (volúmenes locales)
+# =========
 neo4j_data/
 neo4j_logs/
+
+# =========
+# Env files (contienen contraseñas)
+# =========
+.env
+frontend/.env
+
+# =========
+# Node / Frontend
+# =========
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# =========
+# OS / Editor
+# =========
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

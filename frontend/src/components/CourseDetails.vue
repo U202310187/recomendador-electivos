@@ -1,6 +1,11 @@
 <script setup>
 import { ref, watch } from 'vue'
 import LoadingSpinner from './LoadingSpinner.vue'
+import {
+  fetchCursoDetalle,
+  fetchCursoTemas,
+  fetchCursoRelaciones
+} from '../services/recommender.service'
 
 const props = defineProps({ cursoId: String })
 const emit = defineEmits(['curso-seleccionado'])
@@ -9,61 +14,39 @@ const detalle = ref(null)
 const temas = ref([])
 const relaciones = ref([])
 const estado = ref('Haz clic en un curso para ver sus detalles.')
-const API_URL = 'http://localhost:5000'
 
 // --- LÓGICA DE DIAGNÓSTICO ---
 watch(() => props.cursoId, async (newId) => {
   if (!newId) {
     estado.value = 'Haz clic en un curso para ver sus detalles.'
-    detalle.value = null; temas.value = []; relaciones.value = []
+    detalle.value = null
+    temas.value = []
+    relaciones.value = []
     return
   }
-  
+
   // Limpiamos todo
-  detalle.value = null; temas.value = []; relaciones.value = []
-  
+  detalle.value = null
+  temas.value = []
+  relaciones.value = []
+
   try {
-    // --- AQUÍ ESTÁ EL CAMBIO ---
-    // Actualizaremos el estado en cada paso para ver dónde se cuelga
-    
     estado.value = 'Cargando (1/3) Detalles...'
-    const detalleData = await fetchDetalle(newId)
-    detalle.value = detalleData.curso 
-    
+    const detalleData = await fetchCursoDetalle(newId)
+    detalle.value = detalleData.curso
+
     estado.value = 'Cargando (2/3) Temas...'
-    temas.value = await fetchTemas(newId)
-    
+    temas.value = await fetchCursoTemas(newId)
+
     estado.value = 'Cargando (3/3) Relaciones...'
-    relaciones.value = await fetchRelaciones(newId)
-    
-    // Si llega hasta aquí, todo salió bien
-    estado.value = 'OK' 
-    
+    relaciones.value = await fetchCursoRelaciones(newId)
+
+    estado.value = 'OK'
   } catch (error) {
-    // Si algo falla, lo mostrará
     console.error('Error en el diagnóstico:', error)
     estado.value = `Error: ${error.message}`
   }
 })
-
-// --- FUNCIONES DE FETCH (no cambian) ---
-async function fetchDetalle(id) {
-  const res = await fetch(`${API_URL}/cursos/${id}`)
-  if (!res.ok) throw new Error('Curso no encontrado')
-  const data = await res.json()
-  if (!data.curso) throw new Error('API no devolvió un curso.')
-  return data
-}
-async function fetchTemas(id) {
-  const res = await fetch(`${API_URL}/cursos/${id}/temas`)
-  if (!res.ok) throw new Error('Error al cargar temas')
-  return res.json()
-}
-async function fetchRelaciones(id) {
-  const res = await fetch(`${API_URL}/cursos/${id}/relaciones`)
-  if (!res.ok) throw new Error('Error al cargar relaciones')
-  return res.json()
-}
 </script>
 
 <template>

@@ -1,15 +1,19 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { fetchAlumnos } from '../services/recommender.service'
+
 const alumnos = ref([])
 const estado = ref('Cargando alumnos...')
-const API_URL = 'http://localhost:5000'
 const emit = defineEmits(['alumno-seleccionado'])
+
 onMounted(async () => {
   try {
-    const response = await fetch(`${API_URL}/alumnos`)
-    alumnos.value = await response.json()
+    alumnos.value = await fetchAlumnos()
     estado.value = 'OK'
-  } catch (error) { estado.value = 'Error al cargar alumnos' }
+  } catch (error) {
+    console.error(error)
+    estado.value = 'Error al cargar alumnos'
+  }
 })
 </script>
 

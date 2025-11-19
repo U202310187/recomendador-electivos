@@ -1,23 +1,28 @@
 <script setup>
 import { ref, watch } from 'vue'
 import LoadingSpinner from './LoadingSpinner.vue'
+import { fetchRecomendaciones } from '../services/recommender.service'
+
 const props = defineProps({ alumnoId: String })
 const recomendaciones = ref([])
 const estado = ref('Selecciona un alumno para ver sus recomendaciones.')
-const API_URL = 'http://localhost:5000'
+
 watch(() => props.alumnoId, async (newId) => {
   if (!newId) {
     recomendaciones.value = []
     estado.value = 'Selecciona un alumno para ver sus recomendaciones.'
     return
   }
+
   try {
     estado.value = 'Buscando...'
-    const response = await fetch(`${API_URL}/alumnos/${newId}/recomendacion`)
-    const data = await response.json()
+    const data = await fetchRecomendaciones(newId)
     recomendaciones.value = data
     estado.value = data.length > 0 ? 'OK' : 'No se encontraron recomendaciones.'
-  } catch (error) { estado.value = 'Error al cargar recomendaciones.' }
+  } catch (error) {
+    console.error(error)
+    estado.value = 'Error al cargar recomendaciones.'
+  }
 })
 </script>
 
@@ -38,9 +43,9 @@ watch(() => props.alumnoId, async (newId) => {
             {{ rec.curso.nombre }}
           </strong>
           <div class="badge-container">
-            <span class="badge score-badge">Score: {{ rec.score.toFixed(2) }}</span>
-            <span class="badge">Afinidad: {{ rec.affinity.toFixed(2) }}</span>
-            <span class="badge">Prep: {{ rec.prep.toFixed(2) }}</span>
+            <span class="badge score-badge">Score: {{ (rec.score ?? 0).toFixed(2) }}</span>
+            <span class="badge">Afinidad: {{ (rec.affinity ?? 0).toFixed(2) }}</span>
+            <span class="badge">Prep: {{ (rec.prep ?? 0).toFixed(2) }}</span>
           </div>
         </li>
       </ul>

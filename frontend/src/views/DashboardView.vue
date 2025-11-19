@@ -1,41 +1,39 @@
 <script setup>
-import { ref, onMounted } from 'vue' // <-- Solo importamos lo que necesitamos
+import { ref, onMounted } from 'vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
+import {
+  fetchCursosAprobados,
+  fetchAllCursos,
+  agregarCursoAprobado
+} from '../services/recommender.service'
 
-const API_URL = 'http://localhost:5000'
-
-const aprobados = ref([]) // Cursos que el usuario ha aprobado
-const todosLosCursos = ref([]) // Para el dropdown
+const aprobados = ref([])
+const todosLosCursos = ref([])
 const estado = ref('Cargando cursos aprobados...')
 
-// Para el formulario de "Agregar Curso"
 const cursoSeleccionado = ref('')
 const notaSeleccionada = ref(13)
-const idAlumnoSimulado = 'ALU_001' // <-- ¡Usaremos un ID de alumno fijo para probar!
+const idAlumnoSimulado = 'ALU_001'
 
-// onMounted ahora solo carga los cursos, ya no revisa al usuario
 onMounted(() => {
-  fetchCursosAprobados()
-  fetchAllCursos()
+  loadCursosAprobados()
+  loadTodosLosCursos()
 })
 
-async function fetchCursosAprobados() {
+async function loadCursosAprobados() {
   estado.value = 'Cargando cursos aprobados...'
   try {
-    // Usamos el ID simulado
-    const res = await fetch(`${API_URL}/alumnos/${idAlumnoSimulado}/cursos?rel_type=APROBADO`)
-    if (!res.ok) throw new Error('Error al cargar cursos')
-    aprobados.value = await res.json()
+    aprobados.value = await fetchCursosAprobados(idAlumnoSimulado, 'APROBADO')
     estado.value = 'OK'
   } catch (e) {
+    console.error(e)
     estado.value = 'Error al cargar cursos'
   }
 }
 
-async function fetchAllCursos() {
+async function loadTodosLosCursos() {
   try {
-    const res = await fetch(`${API_URL}/cursos`)
-    todosLosCursos.value = await res.json()
+    todosLosCursos.value = await fetchAllCursos()
   } catch (e) {
     console.error('Error al cargar lista total de cursos', e)
   }
@@ -43,24 +41,16 @@ async function fetchAllCursos() {
 
 async function handleAgregarCurso() {
   if (!cursoSeleccionado.value) return
-  
-  try {
-    // Usamos el ID simulado
-    const res = await fetch(`${API_URL}/alumnos/${idAlumnoSimulado}/cursos`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id_curso: cursoSeleccionado.value,
-        nota: parseInt(notaSeleccionada.value)
-      })
-    })
-    
-    if (!res.ok) throw new Error('Error al agregar curso')
 
-    fetchCursosAprobados()
+  try {
+    await agregarCursoAprobado(idAlumnoSimulado, {
+      id_curso: cursoSeleccionado.value,
+      nota: parseInt(notaSeleccionada.value)
+    })
+
+    await loadCursosAprobados()
     cursoSeleccionado.value = ''
     notaSeleccionada.value = 13
-    
   } catch (e) {
     console.error('Error en handleAgregarCurso', e)
     alert('Error al agregar el curso.')
