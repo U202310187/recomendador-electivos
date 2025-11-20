@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flasgger import Swagger
 from neo4j import GraphDatabase, basic_auth
+import random
 
 uri = "bolt://neo4j:7687"
 user = "neo4j"
@@ -41,6 +42,54 @@ def health():
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.post("/login")
+def login():
+    """
+    Login simplificado por código UPC del alumno.
+    ---
+    tags:
+      - Auth
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            codigo:
+              type: string
+              example: "U202310187"
+    responses:
+      200:
+        description: Alumno encontrado (devuelve el nodo Alumno completo)
+      400:
+        description: Falta parámetro
+      404:
+        description: Alumno no encontrado
+    """
+    payload = request.get_json() or {}
+    codigo = payload.get("codigo")
+
+    if not codigo:
+        return jsonify({"error": "El campo 'codigo' es obligatorio."}), 400
+
+    q = """
+    MATCH (a:Alumno {codigo:$codigo})
+    RETURN a{.*} AS alumno
+    """
+    data = run_query(q, codigo=codigo)
+
+    # Si run_query devolvió {"error": ...}
+    if isinstance(data, dict) and "error" in data:
+        return jsonify(data), 500
+
+    if not data:
+        return jsonify({"error": "Alumno no encontrado"}), 404
+
+    # En el front puedes guardar alumno.id para llamar al resto de endpoints
+    return jsonify(data[0])
+
 
 @app.get("/cursos")
 def get_cursos():
@@ -404,6 +453,36 @@ def get_alumno(id_alumno):
     """
     data = run_query(q, id=id_alumno)
     return (jsonify(data[0]) if data else (jsonify({"error":"No encontrado"}), 404))
+
+@app.get("/alumnos/by_codigo/<codigo>")
+def get_alumno_por_codigo(codigo):
+    """
+    Buscar alumno por código universitario.
+    ---
+    tags:
+      - Alumnos
+    parameters:
+      - in: path
+        name: codigo
+        type: string
+        required: true
+        description: Código del alumno (ej. "A_1")
+    responses:
+      200:
+        description: Alumno encontrado
+      404:
+        description: Alumno no encontrado
+    """
+    q = """
+    MATCH (a:Alumno {id:$codigo})
+    RETURN a{.*} AS alumno
+    """
+    data = run_query(q, codigo=codigo)
+
+    if not data:
+        return jsonify({"error": "Alumno no encontrado"}), 404
+
+    return jsonify(data[0])
 
 @app.get("/alumnos/<id_alumno>/cursos")
 def get_cursos_de_alumno(id_alumno):
@@ -832,6 +911,94 @@ def recomendacion(id_alumno):
     """
 
     return jsonify(run_query(q, id=id_alumno, limit=limit, afinidad_min=afinidad_min))
+
+@app.get("/alumnos/<id_alumno>/recomendaciones_aleatorio")
+def recomendar_aleatorio(id_alumno):
+    """
+    Recomendación aleatoria (extra) sobre electivos candidatos.
+    ---
+    tags:
+      - Recomendador
+    parameters:
+      - name: id_alumno
+        in: path
+        type: string
+        required: true
+        description: ID del alumno (ej. "ALU_001")
+      - name: limit
+        in: query
+        type: integer
+        required: false
+        default: 20
+        description: Número máximo de cursos a devolver
+    responses:
+      200:
+        description: Lista de cursos electivos en orden aleatorio
+    """
+    limit = int(request.args.get("limit", 20))
+
+    # Candidatos: electivos relacionados temáticamente con los cursos del alumno
+    q = """
+    MATCH (a:Alumno {id:$id})-[r:REL {label:'inscripcion'}]->(co:Curso {tipo_curso:'obligatorio'})
+    WITH a, co, coalesce(toFloat(r.nota), -1) AS nota
+    WHERE nota >= 11 OR toLower(coalesce(r.estado,'')) IN ['aprobado','aprobada','passed']
+
+    OPTIONAL MATCH (co)-[:REL {label:'incluye_tema'}]->(to:Tema)
+    WITH a, collect(DISTINCT toLower(to.family)) AS famObl
+    WHERE size(famObl) > 0
+
+    MATCH (ce:Curso {tipo_curso:'electivo'})
+    OPTIONAL MATCH (ce)-[:REL {label:'incluye_tema'}]->(te:Tema)
+    WITH ce, famObl, collect(DISTINCT toLower(te.family)) AS famE
+    WHERE size([f IN famE WHERE f IN famObl]) > 0
+
+    RETURN ce{.*} AS curso
+    """
+    candidatos = run_query(q, id=id_alumno)
+
+    if isinstance(candidatos, dict) and "error" in candidatos:
+        return jsonify(candidatos), 500
+
+    # Fisher–Yates / random.shuffle (O(n))
+    random.shuffle(candidatos)
+
+    return jsonify(candidatos[:limit])
+
+@app.get("/alumnos/by_codigo/<codigo>/cursos_aprobados")
+def get_cursos_aprobados_por_codigo(codigo):
+    """
+    Cursos obligatorios aprobados por un alumno (búsqueda por código)
+    ---
+    tags:
+      - Alumnos
+    parameters:
+      - name: codigo
+        in: path
+        type: string
+        required: true
+        description: Código del alumno (ej. "A_1")
+    responses:
+      200:
+        description: Lista de cursos obligatorios aprobados
+        examples:
+          application/json:
+            - curso:
+                id: C_1234
+                nombre: CURSO-01-001
+                tipo_curso: obligatorio
+              relacion:
+                type: APROBADO
+                nota: 15
+    """
+    q = """
+    MATCH (a:Alumno {id: $codigo})-[r:REL]->(c:Curso)
+    WHERE r.type = 'APROBADO'
+      AND c.tipo_curso = 'obligatorio'
+    RETURN c{.*} AS curso, r{.*} AS relacion
+    ORDER BY c.nombre
+    """
+    return jsonify(run_query(q, codigo=codigo))
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

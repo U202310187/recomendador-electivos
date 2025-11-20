@@ -1,29 +1,54 @@
 <script setup>
 import { ref, watch } from 'vue'
 import LoadingSpinner from './LoadingSpinner.vue'
-import { fetchRecomendaciones } from '../services/recommender.service'
+import { fetchRecomendacionesPorModo } from '@/services/recommender.service'
 
-const props = defineProps({ alumnoId: String })
-const recomendaciones = ref([])
-const estado = ref('Selecciona un alumno para ver sus recomendaciones.')
-
-watch(() => props.alumnoId, async (newId) => {
-  if (!newId) {
-    recomendaciones.value = []
-    estado.value = 'Selecciona un alumno para ver sus recomendaciones.'
-    return
-  }
-
-  try {
-    estado.value = 'Buscando...'
-    const data = await fetchRecomendaciones(newId)
-    recomendaciones.value = data
-    estado.value = data.length > 0 ? 'OK' : 'No se encontraron recomendaciones.'
-  } catch (error) {
-    console.error(error)
-    estado.value = 'Error al cargar recomendaciones.'
+const props = defineProps({
+  alumnoId: String,
+  modo: {
+    type: [Number, String],
+    default: 1
   }
 })
+
+const recomendaciones = ref([])
+const estado = ref('Selecciona un modo para ver recomendaciones.')
+const cargando = ref(false)
+
+// Pequeño helper para evitar errores cuando score/affinity/prep vienen undefined
+const fmt = (n) => (typeof n === 'number' ? n.toFixed(2) : '0.00')
+
+watch(
+  () => [props.alumnoId, props.modo],
+  async ([nuevoId, nuevoModo]) => {
+    if (!nuevoId) {
+      recomendaciones.value = []
+      estado.value = 'Aún no hay cursos obligatorios aprobados registrados.'
+      return
+    }
+
+    cargando.value = true
+    estado.value = 'Buscando...'
+
+    try {
+      const data = await fetchRecomendacionesPorModo(nuevoId, nuevoModo)
+      recomendaciones.value = Array.isArray(data) ? data : []
+      estado.value =
+        recomendaciones.value.length > 0
+          ? 'OK'
+          : 'No se encontraron recomendaciones.'
+    } catch (e) {
+      console.error(e)
+      recomendaciones.value = []
+      estado.value = 'Error al cargar recomendaciones.'
+    } finally {
+      cargando.value = false
+    }
+  },
+  { immediate: true }
+)
+
+defineExpose({ fmt })
 </script>
 
 <template>
@@ -31,21 +56,28 @@ watch(() => props.alumnoId, async (newId) => {
     <h3 class="card-title">Paso 2: Cursos Recomendados</h3>
     <div class="content">
       <LoadingSpinner v-if="estado === 'Buscando...'" />
+
       <div v-else-if="recomendaciones.length === 0" class="empty-state">
         <p>{{ estado }}</p>
       </div>
+
       <ul v-else class="list">
-        <li v-for="rec in recomendaciones" :key="rec.curso.id" class="list-item">
-          <strong 
+        <li
+          v-for="rec in recomendaciones"
+          :key="rec.curso.id"
+          class="list-item"
+        >
+          <strong
             class="course-name"
             @click="$emit('curso-seleccionado', rec.curso.id)"
           >
             {{ rec.curso.nombre }}
           </strong>
+
           <div class="badge-container">
-            <span class="badge score-badge">Score: {{ (rec.score ?? 0).toFixed(2) }}</span>
-            <span class="badge">Afinidad: {{ (rec.affinity ?? 0).toFixed(2) }}</span>
-            <span class="badge">Prep: {{ (rec.prep ?? 0).toFixed(2) }}</span>
+            <span class="badge score-badge">Score: {{ fmt(rec.score) }}</span>
+            <span class="badge">Afinidad: {{ fmt(rec.affinity) }}</span>
+            <span class="badge">Prep: {{ fmt(rec.prep) }}</span>
           </div>
         </li>
       </ul>

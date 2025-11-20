@@ -1,40 +1,27 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { getAlumnoActual } from '../services/auth.service'
 
-// Importamos las Vistas y el Layout
+// Layout y Vistas
 import AppLayout from '../views/AppLayout.vue'
 import DashboardView from '../views/DashboardView.vue'
 import RecommenderView from '../views/RecommenderView.vue'
 import Login from '../views/Login.vue'
-import Register from '../views/Register.vue'
 
 const routes = [
-  // --- Rutas de Autenticación (fondo rojo, sin navbar) ---
-  // Estas son rutas separadas que ya no usaremos por defecto
-  {
-    path: '/login',
-    name: 'Login',
-    component: Login
-  },
-  {
-    path: '/registro',
-    name: 'Register',
-    component: Register
-  },
+  { path: '/login', name: 'Login', component: Login },
 
-  // --- Rutas de la Aplicación (fondo gris, CON navbar) ---
-  // El "AppLayout" ahora es el componente para la ruta RAÍZ '/'
   {
-    path: '/', 
-    component: AppLayout, // Carga el layout (con Navbar)
-    // No hay guardias, no hay redirecciones raras.
+    path: '/',
+    component: AppLayout,
+    meta: { requiresAuth: true },
     children: [
       {
-        path: '', // Si la ruta es SÓLO '/', muestra el Dashboard
+        path: '',
         name: 'Dashboard',
         component: DashboardView
       },
       {
-        path: 'recomendador', // La ruta es /recomendador
+        path: 'recomendador',
         name: 'Recommender',
         component: RecommenderView
       }
@@ -45,6 +32,23 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+//
+// 🔒 GUARD DE AUTENTICACIÓN (el único que necesitas)
+//
+router.beforeEach((to, from, next) => {
+  const logged = getAlumnoActual()
+
+  if (to.meta.requiresAuth && !logged) {
+    return next('/login')
+  }
+
+  if (to.path === '/login' && logged) {
+    return next('/')  // Ya logueado → no puede volver al login
+  }
+
+  next()
 })
 
 export default router

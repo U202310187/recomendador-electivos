@@ -1,26 +1,38 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { loginPorCodigo } from '../services/auth.service'
 
 const router = useRouter()
-const email = ref('')
-const password = ref('')
+
+// Código de alumno, estado y error
+const codigo = ref('')           // puedes poner 'A_1' aquí para probar rápido
+const loading = ref(false)
 const error = ref(null)
 
-// Esta es la lógica de SIMULACIÓN de login
-function handleLogin() {
+async function handleLogin() {
   error.value = null
-  if (email.value && password.value) {
-    console.log('Login exitoso (simulado)');
-    
-    // 1. Guarda la variable "userLoggedIn" (la de la simulación)
-    localStorage.setItem('userLoggedIn', 'true');
-    
-    // 2. Redirige al NUEVO panel de cursos
-    router.push('/'); 
-    
-  } else {
-    error.value = 'Por favor, ingresa tus credenciales.';
+
+  const limpio = (codigo.value || '').trim()
+  if (!limpio) {
+    error.value = 'Debes ingresar tu código de alumno (por ejemplo: A_1)'
+    return
+  }
+
+  try {
+    loading.value = true
+
+    // 1. Llamamos al backend: GET /alumnos/by_codigo/<codigo>
+    const alumno = await loginPorCodigo(limpio)
+    console.log('Login OK, alumno:', alumno)
+
+    // 2. Navegamos al dashboard por NOMBRE de ruta
+    await router.push({ name: 'Dashboard' })
+  } catch (e) {
+    console.error('Error en login:', e)
+    error.value = e.message || 'No se pudo iniciar sesión.'
+  } finally {
+    loading.value = false
   }
 }
 </script>
@@ -29,32 +41,35 @@ function handleLogin() {
   <div class="auth-container">
     <div class="auth-card">
       <h1 class="auth-title">Bienvenido</h1>
-      
+
       <form @submit.prevent="handleLogin">
         <div class="input-group">
-          <label for="email">Usuario (Email)</label>
-          <input v-model="email" type="email" id="email" class="input-field" />
+          <label for="codigo">Código de alumno</label>
+          <input
+          v-model="codigo"
+          type="text"
+          id="codigo"
+          class="input-field"
+          placeholder="Ejemplo: A_1"
+          :disabled="loading"
+          />
         </div>
-        
-        <div class="input-group">
-          <label for="password">Contraseña</label>
-          <input v-model="password" type="password" id="password" class="input-field" />
-        </div>
-        
+
         <p v-if="error" class="error-message">{{ error }}</p>
 
-        <button type="submit" class="auth-button">Entrar</button>
+        <button
+          type="submit"
+          class="auth-button"
+          :disabled="loading"
+        >
+          {{ loading ? 'Ingresando...' : 'Entrar' }}
+        </button>
       </form>
-
-      <div class="auth-link">
-        ¿No tienes cuenta? <RouterLink to="/registro">Regístrate</RouterLink>
-      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* Estilos inspirados en tus wireframes (rojo + tarjetas) */
 .auth-container {
   display: flex;
   align-items: center;
@@ -66,7 +81,10 @@ function handleLogin() {
   background-color: var(--color-card, #fff);
   padding: 2.5rem;
   border-radius: var(--border-radius, 8px);
-  box-shadow: var(--shadow, 0 10px 15px -3px rgba(0,0,0,0.1));
+  box-shadow: var(
+    --shadow,
+    0 10px 15px -3px rgba(0, 0, 0, 0.1)
+  );
   width: 100%;
   max-width: 400px;
 }
@@ -91,7 +109,7 @@ function handleLogin() {
   padding: 0.75rem;
   border: 1px solid #d1d5db;
   border-radius: 0.375rem;
-  box-sizing: border-box; /* Importante para el padding */
+  box-sizing: border-box;
 }
 .auth-button {
   width: 100%;
@@ -105,21 +123,12 @@ function handleLogin() {
   cursor: pointer;
   margin-top: 1rem;
 }
-.auth-link {
-  margin-top: 1.5rem;
-  text-align: center;
-  color: var(--color-text-light, #6b7280);
-}
-.auth-link a {
-  color: var(--color-primary, #2563eb);
-  font-weight: 500;
-  text-decoration: none;
-}
-.auth-link a:hover {
-  text-decoration: underline;
+.auth-button:disabled {
+  opacity: 0.7;
+  cursor: default;
 }
 .error-message {
-  color: #dc2626; /* Rojo de error */
+  color: #dc2626;
   font-size: 0.875rem;
   text-align: center;
   margin-bottom: 1rem;

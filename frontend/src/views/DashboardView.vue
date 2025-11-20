@@ -1,122 +1,84 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
-import {
-  fetchCursosAprobados,
-  fetchAllCursos,
-  agregarCursoAprobado
-} from '../services/recommender.service'
+import { getAlumnoActual } from '../services/auth.service'
+import { fetchCursosUltimoCiclo } from '../services/recommender.service'
 
-const aprobados = ref([])
-const todosLosCursos = ref([])
-const estado = ref('Cargando cursos aprobados...')
+const cursos = ref([])
+const estado = ref('CARGANDO')
+const alumnoNombre = ref('')
 
-const cursoSeleccionado = ref('')
-const notaSeleccionada = ref(13)
-const idAlumnoSimulado = 'ALU_001'
+onMounted(async () => {
+  const alumno = getAlumnoActual()
 
-onMounted(() => {
-  loadCursosAprobados()
-  loadTodosLosCursos()
-})
+  if (!alumno) {
+    estado.value = 'SIN_LOGIN'
+    return
+  }
 
-async function loadCursosAprobados() {
-  estado.value = 'Cargando cursos aprobados...'
+  alumnoNombre.value = alumno.nombre || alumno.id
+
   try {
-    aprobados.value = await fetchCursosAprobados(idAlumnoSimulado, 'APROBADO')
-    estado.value = 'OK'
+    estado.value = 'CARGANDO'
+    const data = await fetchCursosUltimoCiclo(alumno.id)
+    cursos.value = data
+    estado.value = data.length ? 'OK' : 'VACIO'
   } catch (e) {
     console.error(e)
-    estado.value = 'Error al cargar cursos'
+    estado.value = 'ERROR'
   }
-}
-
-async function loadTodosLosCursos() {
-  try {
-    todosLosCursos.value = await fetchAllCursos()
-  } catch (e) {
-    console.error('Error al cargar lista total de cursos', e)
-  }
-}
-
-async function handleAgregarCurso() {
-  if (!cursoSeleccionado.value) return
-
-  try {
-    await agregarCursoAprobado(idAlumnoSimulado, {
-      id_curso: cursoSeleccionado.value,
-      nota: parseInt(notaSeleccionada.value)
-    })
-
-    await loadCursosAprobados()
-    cursoSeleccionado.value = ''
-    notaSeleccionada.value = 13
-  } catch (e) {
-    console.error('Error en handleAgregarCurso', e)
-    alert('Error al agregar el curso.')
-  }
-}
+})
 </script>
 
 <template>
   <div>
     <h1 class="title">Mi Panel de Cursos</h1>
-    <p class="subtitle">Aquí puedes ver y gestionar tus cursos aprobados.</p>
+    <p class="subtitle">
+      Aquí puedes ver los cursos obligatorios que has aprobado (post-ciclo),
+      según la información registrada en el sistema académico.
+    </p>
 
     <div class="dashboard-grid">
       <div class="card">
-        <h3 class="card-title">Agregar Curso Aprobado</h3>
-        <form @submit.prevent="handleAgregarCurso" class="form-container">
-          
-          <div class="input-group">
-            <label for="curso-select">Selecciona un Curso:</label>
-            <select id="curso-select" v-model="cursoSeleccionado" class="select-input">
-              <option value="">-- Cursos Disponibles --</option>
-              <option v-for="curso in todosLosCursos" :key="curso.id" :value="curso.id">
-                {{ curso.nombre }}
-              </option>
-            </select>
-          </div>
+        <h3 class="card-title">Mis Cursos Obligatorios Aprobados</h3>
+          <div class="content">
+          <LoadingSpinner v-if="estado === 'CARGANDO'" />
 
-          <div class="input-group">
-            <label for="nota-input">Nota Obtenida:</label>
-            <input 
-              id="nota-input" 
-              type="number" 
-              v-model="notaSeleccionada" 
-              min="13" 
-              max="20" 
-              class="select-input"
-            />
-          </div>
-          
-          <button type="submit" class="auth-button">Agregar Curso</button>
-        </form>
-      </div>
+          <p v-else-if="estado === 'SIN_LOGIN'" class="empty-state">
+          Primero inicia sesión con tu código de alumno.
+          </p>
 
-      <div class="card">
-        <h3 class="card-title">Mis Cursos Aprobados (Alumno de Prueba)</h3>
-        <div class="content">
-          <LoadingSpinner v-if="estado.includes('Cargando')" />
-          <div v-else-if="aprobados.length === 0" class="empty-state">
-            <p>Aún no has agregado cursos aprobados.</p>
-          </div>
+          <p v-else-if="estado === 'VACIO'" class="empty-state">
+          Aún no hay cursos obligatorios aprobados registrados.
+          </p>
+
+          <p v-else-if="estado === 'ERROR'" class="empty-state">
+            Ocurrió un error al cargar tus cursos.
+          </p>
+
           <ul v-else class="list">
-            <li v-for="item in aprobados" :key="item.curso.id" class="list-item">
+            <li
+              v-for="item in cursos"
+              :key="item.curso.id"
+              class="list-item"
+            >
               <span class="curso-nombre">{{ item.curso.nombre }}</span>
               <span class="curso-nota">Nota: {{ item.relacion.nota }}</span>
             </li>
           </ul>
         </div>
       </div>
-    </div>
-    
-    <div class="card cta-card">
-      <h3 class="card-title">¿Listo para el siguiente paso?</h3>
-      <p>Usa el recomendador para encontrar tus próximos cursos electivos.</p>
-      <RouterLink to="/recomendador" class="auth-button recommend-button">
-        Ir al Recomendador
-      </RouterLink>
+
+      <div class="card cta-card">
+        <h3 class="card-title">¿Listo para el siguiente paso?</h3>
+        <p>
+          Usa el recomendador para encontrar tus próximos cursos electivos,
+          basados en tu historial académico.
+        </p>
+        <RouterLink to="/recomendador" class="auth-button recommend-button">
+          Ir al Recomendador
+        </RouterLink>
+      </div>
     </div>
   </div>
 </template>
