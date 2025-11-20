@@ -21,8 +21,15 @@ onMounted(async () => {
   try {
     estado.value = 'CARGANDO'
     const data = await fetchCursosUltimoCiclo(alumno.id)
-    cursos.value = data
-    estado.value = data.length ? 'OK' : 'VACIO'
+    const obligatoriosAprobados = data.filter(item => {
+      const esObligatorio = item.curso?.tipo_curso === 'obligatorio'
+      const nota = Number(item.relacion?.nota)
+      const estaAprobado = !Number.isNaN(nota) ? nota >= 13 : false
+      return esObligatorio && estaAprobado
+    })
+
+    cursos.value = obligatoriosAprobados
+    estado.value = obligatoriosAprobados.length ? 'OK' : 'VACIO'
   } catch (e) {
     console.error(e)
     estado.value = 'ERROR'

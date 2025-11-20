@@ -48,15 +48,18 @@ export function fetchRecomendacionesPorModo(idAlumno, modo) {
 }
 
 // ------- CURSOS/APROBADOS ---------
-
-// Nuevo endpoint por código de alumno
-export function fetchCursosObligAprobadosPorCodigo(codigoAlumno) {
-  return getJson(`/alumnos/by_codigo/${codigoAlumno}/cursos_aprobados`)
+// Trae los cursos relacionados al alumno usando el endpoint
+// GET /alumnos/<id_alumno>/cursos?rel_type=Directed
+export function fetchCursosAprobados(idAlumno, relType = 'Directed') {
+  return getJson(
+    `/alumnos/${encodeURIComponent(idAlumno)}/cursos?rel_type=${encodeURIComponent(relType)}`
+  )
 }
 
-// Alias para no romper DashboardView (usa el mismo endpoint)
-export function fetchCursosUltimoCiclo(codigoAlumno) {
-  return fetchCursosObligAprobadosPorCodigo(codigoAlumno)
+// Alias que usa el Dashboard (último ciclo = cursos aprobados registrados)
+export function fetchCursosUltimoCiclo(idAlumno) {
+  // Por ahora es lo mismo: todos los cursos con r.type = 'Directed'
+  return fetchCursosAprobados(idAlumno, 'Directed')
 }
 
 // ------- DETALLES DE CURSO ---------
