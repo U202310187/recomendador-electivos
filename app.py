@@ -782,11 +782,13 @@ def recomendar(id_alumno):
     WITH ce, prep, sum(part) AS numerator, sum(sim_jaccard) AS denominator
     WITH ce, prep, CASE WHEN denominator=0 THEN 0.0 ELSE numerator/denominator END AS affinity
 
-    RETURN
-    ce{.*} AS curso,
-    round(prep*100)/100.0     AS prep,
-    round(affinity*100)/100.0 AS affinity,
-    round((0.6*prep + 0.4*affinity)*100)/100.0 AS score
+    WITH
+        ce,
+        round(prep*100)/100.0     AS prep,
+        round(affinity*100)/100.0 AS affinity,
+        round((0.6*prep + 0.4*affinity)*100)/100.0 AS score
+    WHERE score > 0
+    RETURN ce{.*} AS curso, prep, affinity, score
     ORDER BY score DESC, curso.nombre
     LIMIT $limit
     """
