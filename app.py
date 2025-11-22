@@ -630,6 +630,9 @@ def recomendar_cursos(id_alumno):
     RETURN c2{.*} AS curso, temasCompartidos, menciones
     ORDER BY temasCompartidos DESC, curso.nombre
     LIMIT $limit
+
+    WHERE score > 0
+
     """
     return jsonify(run_query(q, id=id_alumno, rel=rel_type, limit=limit))
 
@@ -955,6 +958,9 @@ def recomendar_aleatorio(id_alumno):
     WHERE size([f IN famE WHERE f IN famObl]) > 0
 
     RETURN ce{.*} AS curso
+
+WHERE score > 0
+
     """
     candidatos = run_query(q, id=id_alumno)
 
@@ -965,6 +971,7 @@ def recomendar_aleatorio(id_alumno):
     random.shuffle(candidatos)
 
     return jsonify(candidatos[:limit])
+  
 
 @app.get("/alumnos/by_codigo/<codigo>/cursos_aprobados")
 def get_cursos_aprobados_por_codigo(codigo):
