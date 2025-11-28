@@ -7,7 +7,7 @@ import { getAlumnoActual } from '../services/auth.service'
 const alumnoId = ref(null)
 const alumnoNombre = ref('')
 const cursoSeleccionadoId = ref(null)
-const modo = ref(1) // 1, 2, 3 o 4 (extra aleatorio)
+const modo = ref(1)
 const estado = ref('Cargando información del alumno...')
 
 onMounted(() => {
@@ -63,14 +63,13 @@ function onCursoSeleccionado(id) {
           </label>
           <label>
             <input type="radio" value="4" v-model.number="modo" />
-            Extra – Exploración aleatoria (Fisher–Yates sobre candidatos)
+            Extra – Exploración aleatoria (Fisher–Yates)
           </label>
         </div>
       </div>
 
       <div class="content-grid">
         <div class="column-left">
-          <!-- Ya NO hay StudentSelector; usamos el alumno logueado -->
           <RecommendationList
             :alumno-id="alumnoId"
             :modo="modo"

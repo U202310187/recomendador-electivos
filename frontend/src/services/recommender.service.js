@@ -31,7 +31,6 @@ export function fetchRecomendacionesAleatorio(idAlumno) {
   return getJson(`/alumnos/${idAlumno}/recomendaciones_aleatorio`)
 }
 
-// Función única según modo
 export function fetchRecomendacionesPorModo(idAlumno, modo) {
   const m = Number(modo) || 1
 
@@ -58,7 +57,6 @@ export function fetchCursosAprobados(idAlumno, relType = 'Directed') {
 
 // Alias que usa el Dashboard (último ciclo = cursos aprobados registrados)
 export function fetchCursosUltimoCiclo(idAlumno) {
-  // Por ahora es lo mismo: todos los cursos con r.type = 'Directed'
   return fetchCursosAprobados(idAlumno, 'Directed')
 }
 

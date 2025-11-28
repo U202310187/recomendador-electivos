@@ -14,8 +14,6 @@ const props = defineProps({
 const recomendaciones = ref([])
 const estado = ref('Selecciona un modo para ver recomendaciones.')
 const cargando = ref(false)
-
-// Pequeño helper para evitar errores cuando score/affinity/prep vienen undefined
 const fmt = (n) => (typeof n === 'number' ? n.toFixed(2) : '0.00')
 
 watch(
@@ -113,19 +111,18 @@ defineExpose({ fmt })
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem; /* Reducimos el espacio */
+  gap: 0.5rem;
 }
 
-/* --- ESTILOS MEJORADOS --- */
 .list-item {
-  border: 1px solid #e5e7eb; /* Borde sutil */
+  border: 1px solid #e5e7eb;
   padding: 1rem;
-  border-radius: 0.375rem; /* Bordes redondeados */
+  border-radius: 0.375rem;
   transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
-/* Efecto hover intuitivo */
+
 .list-item:hover {
-  background-color: #fafafa; /* Fondo gris muy claro */
+  background-color: #fafafa;
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
 }
 
@@ -134,7 +131,7 @@ defineExpose({ fmt })
   font-weight: 600;
   font-size: 1.125rem;
   cursor: pointer;
-  display: block; /* Hacemos que todo el nombre sea un bloque */
+  display: block;
 }
 .course-name:hover {
   text-decoration: underline;
@@ -154,8 +151,8 @@ defineExpose({ fmt })
   border-radius: 9999px;
 }
 .score-badge {
-  background-color: #dbeafe; /* Azul claro */
-  color: #1e40af; /* Azul oscuro */
+  background-color: #dbeafe;
+  color: #1e40af;
   font-weight: 700;
 }
 </style>

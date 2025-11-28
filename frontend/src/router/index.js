@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { getAlumnoActual } from '../services/auth.service'
 
-// Layout y Vistas
 import AppLayout from '../views/AppLayout.vue'
 import DashboardView from '../views/DashboardView.vue'
 import RecommenderView from '../views/RecommenderView.vue'
@@ -34,9 +33,6 @@ const router = createRouter({
   routes
 })
 
-//
-// 🔒 GUARD DE AUTENTICACIÓN (el único que necesitas)
-//
 router.beforeEach((to, from, next) => {
   const logged = getAlumnoActual()
 
@@ -45,7 +41,7 @@ router.beforeEach((to, from, next) => {
   }
 
   if (to.path === '/login' && logged) {
-    return next('/')  // Ya logueado → no puede volver al login
+    return next('/')
   }
 
   next()
