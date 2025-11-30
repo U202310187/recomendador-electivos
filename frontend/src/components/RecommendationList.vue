@@ -17,11 +17,16 @@ const cargando = ref(false)
 const fmt = (n) => (typeof n === 'number' ? n.toFixed(2) : '0.00')
 const pageSize = 5
 const currentPage = ref(1)
+
 const totalPages = computed(() =>
   recomendaciones.value.length === 0
     ? 1
     : Math.ceil(recomendaciones.value.length / pageSize)
 )
+
+/* 🔥 NUEVO: reglas de modo */
+const esModoSoloScore = computed(() => Number(props.modo) === 2)
+const esModoAleatorio = computed(() => Number(props.modo) === 4)
 
 const paginatedRecomendaciones = computed(() => {
   const start = (currentPage.value - 1) * pageSize
@@ -92,9 +97,14 @@ defineExpose({ fmt })
             </strong>
 
             <div class="badge-container">
-              <span class="badge score-badge">Score: {{ fmt(rec.score) }}</span>
-              <span class="badge">Afinidad: {{ fmt(rec.affinity) }}</span>
-              <span class="badge">Prep: {{ fmt(rec.prep) }}</span>
+
+          <template v-if="esModoAleatorio"></template>
+            <span v-else-if="esModoSoloScore" class="badge score-badge">Temas compartidos: {{ fmt(rec.score) }}</span>
+          <template v-else>
+            <span class="badge score-badge">Score: {{ fmt(rec.score) }}</span>
+             <span class="badge">Afinidad: {{ fmt(rec.affinity) }}</span>
+             <span class="badge">Prep: {{ fmt(rec.prep) }}</span>
+            </template>
             </div>
           </li>
         </ul>

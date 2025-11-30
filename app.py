@@ -289,22 +289,29 @@ def recomendar_cursos(id_alumno):
     WHERE r1.type = $rel
     WITH a, collect(DISTINCT c) AS cursosAlumno
 
+    // Temas de los cursos que ya llevó el alumno
     MATCH (c1:Curso)-[rc:REL]->(t:Tema)
     WHERE rc.type = $rel AND c1 IN cursosAlumno
     WITH a, cursosAlumno, collect(DISTINCT t) AS temasAlumno
 
+    // Cursos electivos que comparten temas con lo que ya vio
     MATCH (c2:Curso {tipo_curso:'electivo'})-[rct:REL]->(t2:Tema)
     WHERE rct.type = $rel
-      AND t2 IN temasAlumno
+     AND t2 IN temasAlumno
       AND NOT c2 IN cursosAlumno
 
+    // Mención solo para mostrar
     OPTIONAL MATCH (c2)-[rm:REL]->(m:Mencion)
     WHERE rm.type = $rel
 
     WITH c2, count(DISTINCT t2) AS temasCompartidos, collect(DISTINCT m.nombre) AS menciones
-    RETURN c2{.*} AS curso, temasCompartidos, menciones
-    ORDER BY temasCompartidos DESC, curso.nombre
-    LIMIT $limit
+
+    RETURN
+      c2{.*} AS curso,
+      toFloat(temasCompartidos) AS score,
+      menciones
+    ORDER BY score DESC, curso.nombre
+    LIMIT $limit;
     """
     return jsonify(run_query(q, id=id_alumno, rel=rel_type, limit=limit))
 
