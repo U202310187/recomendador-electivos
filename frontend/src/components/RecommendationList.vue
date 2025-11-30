@@ -24,7 +24,6 @@ const totalPages = computed(() =>
     : Math.ceil(recomendaciones.value.length / pageSize)
 )
 
-/* 🔥 NUEVO: reglas de modo */
 const esModoSoloScore = computed(() => Number(props.modo) === 2)
 const esModoAleatorio = computed(() => Number(props.modo) === 4)
 
