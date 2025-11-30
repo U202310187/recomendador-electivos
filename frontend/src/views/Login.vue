@@ -3,7 +3,6 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { loginPorCodigo } from '../services/auth.service'
 import upcLogo from '@/assets/UPC_logo_transparente.png'
-import sedeMonterrico from '@/assets/sedeMonterrico.jpeg'
 
 const router = useRouter()
 
@@ -79,17 +78,16 @@ async function handleLogin() {
   justify-content: center;
   min-height: 100vh;
 
-  /* Fondo con imagen */
   background-image: url('@/assets/sedeMonterrico.jpeg');
-  background-size: cover;          /* que llene la pantalla */
-  background-position: center;     /* centrada */
+  background-size: cover;
+  background-position: center;
   background-repeat: no-repeat;
-  background-attachment: fixed;    /* efecto bonito */
+  background-attachment: fixed;
 }
 .upc-logo {
-  width: 160px;          /* ajustable */
+  width: 160px; 
   display: block;
-  margin: 0 auto 1rem;   /* centra + margen inferior */
+  margin: 0 auto 1rem;
 }
 .auth-card {
   background-color: var(--color-card, #fff);
@@ -129,7 +127,7 @@ async function handleLogin() {
   width: 100%;
   padding: 0.75rem;
   border-radius: 0.375rem;
-  background-color: #e4002b; /* rojo MI UPC */
+  background-color: #e4002b;
   color: #ffffff;
   font-size: 1rem;
   font-weight: 700;
@@ -137,13 +135,13 @@ async function handleLogin() {
   margin-top: 1rem;
   border: none;
   transition: all 0.2s ease-in-out;
-  font-family: 'Solano Gothic MVB', 'Solano', sans-serif; /* opcional */
+  font-family: 'Solano Gothic MVB', 'Solano', sans-serif;
 }
 
 .auth-button:hover:not(:disabled) {
-  background-color: #b30021; /* rojo oscuro */
+  background-color: #b30021;
   color: #ffffff;
-  transform: translateY(-1px); /* efecto sutil */
+  transform: translateY(-1px);
 }
 
 .auth-button:disabled {

@@ -4,7 +4,7 @@ Esta guía está hecha para levantar el proyecto paso a paso.
 
 ---
 
-## ✅ 0. Antes de empezar
+## 0. Antes de empezar
 Asegúrate de tener instalado en tu computadora:
 
 - **Docker Desktop**
@@ -14,7 +14,7 @@ Asegúrate de tener instalado en tu computadora:
 
 ---
 
-## ✅ 1. Abrir PowerShell en modo normal (NO como administrador)
+## 1. Abrir PowerShell en modo normal (NO como administrador)
 
 1. Presiona **Windows + S**
 2. Escribe: `PowerShell`
@@ -24,7 +24,7 @@ Asegúrate de tener instalado en tu computadora:
 
 ---
 
-## ✅ 2. Clonar el repositorio
+## 2. Clonar el repositorio
 Ejecuta en **PowerShell**:
 
 ```powershell
@@ -40,7 +40,7 @@ cd flask_graph_app
 
 ---
 
-## ✅ 3. Crear tu archivo `.env`
+## 3. Crear archivo `.env`
 Esto se hace **dentro de la carpeta del proyecto**, en **PowerShell**:
 
 ### Windows (PowerShell / CMD):
@@ -62,7 +62,7 @@ NEO4J_PASS=CAMBIAR_ESTA_CONTRASEÑA
 
 ---
 
-## ✅ 4. Levantar los contenedores (iniciar la app y Neo4j)
+## 4. Levantar los contenedores (iniciar la app y Neo4j)
 Ejecutar en **PowerShell en la carpeta del proyecto**:
 
 ```powershell
@@ -79,7 +79,7 @@ Contraseña: la que está en `.env`
 
 ---
 
-## ✅ 5. Restaurar la base de datos (SOLO LO HACES UNA VEZ)
+## 5. Restaurar la base de datos (SOLO LO HACES UNA VEZ)
 
 ### Paso 5.1 — Detener el contenedor de Neo4j
 Ejecutar en **PowerShell dentro del proyecto**:
@@ -99,11 +99,11 @@ docker run --rm -v app_neo4j_data:/data -v ${PWD}/db_seed:/seed $(docker inspect
 docker compose up -d
 ```
 
-Listo ✅ Ya tienes la misma base de datos que el resto del equipo.
+Ahora tienes la misma base de datos que el resto del equipo.
 
 ---
 
-## ✅ 6. Comandos útiles del día a día
+## 6. Comandos útiles del día a día
 
 ```powershell
 # Ver contenedores corriendo
@@ -118,7 +118,7 @@ docker compose up -d
 
 ---
 
-## ✅ 7. Flujo de trabajo para colaborar
+## 7. Flujo de trabajo para colaborar
 
 ```powershell
 # Crear una nueva rama para una tarea
@@ -134,7 +134,7 @@ git push -u origin feature/nueva-funcion
 
 ---
 
-## 🎉 ¡Listo!
+## Listo
 Si seguiste estos pasos, ya estás trabajando con:
 - El backend funcionando
 - Neo4j con la base de datos inicial

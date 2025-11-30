@@ -40,11 +40,7 @@ onMounted(async () => {
 <template>
   <div>
     <h1 class="title">Mi Panel de Cursos</h1>
-    <p class="subtitle">
-      Aquí puedes ver los cursos obligatorios que has aprobado (post-ciclo),
-      según la información registrada en el sistema académico.
-    </p>
-
+    <p class="subtitle">Aquí puedes ver los cursos obligatorios que has aprobado (post-ciclo), según tu historial académico.</p>
     <div class="dashboard-grid">
       <div class="card">
         <h3 class="card-title">Mis Cursos Obligatorios Aprobados</h3>
@@ -152,7 +148,7 @@ onMounted(async () => {
   width: auto;
   padding: 0.75rem 1.5rem;
   border-radius: 0.375rem;
-  background-color: #e4002b;      /* rojo inicial */
+  background-color: #e4002b;
   color: #ffffff;
   font-size: 1rem;
   font-weight: 700;
@@ -160,13 +156,13 @@ onMounted(async () => {
   cursor: pointer;
   display: inline-block;
   transition: all 0.2s ease-in-out;
-  font-family: 'Solano Gothic MVB', 'Solano', sans-serif; /* opcional, igual que MI UPC */
+  font-family: 'Solano Gothic MVB', 'Solano', sans-serif;
 }
 
 .auth-button:hover {
-  background-color: #b30021;   /* rojo más oscuro */
-  color: #ffffff;              /* mantiene blanco */
-  transform: translateY(-1px); /* efecto premium opcional */
+  background-color: #b30021;
+  color: #ffffff;
+  transform: translateY(-1px);
 }
 .cta-card {
   text-align: center;

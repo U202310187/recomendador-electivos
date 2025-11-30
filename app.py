@@ -108,7 +108,7 @@ def get_relaciones_de_curso(id_curso):
 @app.get("/alumnos")
 def get_alumnos():
     """
-    Lista de alumnos (paginada)
+    Lista de alumnos paginada
     ---
     tags:
       - Alumnos
@@ -311,7 +311,7 @@ def recomendar_cursos(id_alumno):
 @app.get("/alumnos/<id_alumno>/recomendar")
 def recomendar(id_alumno):
     """
-    Calcula recomendaciones de electivos combinando la preparación del alumno (en prerrequisitos) y la afinidad temática.
+    Calcula recomendaciones de electivos combinando la preparación del alumno y la afinidad temática.
     ---
     tags:
       - Recomendador
@@ -347,7 +347,7 @@ def recomendar(id_alumno):
     WITH a, co, coalesce(toFloat(r.nota), -1) AS nota
     WHERE nota >= 11 OR toLower(coalesce(r.estado,'')) IN ['aprobado','aprobada','passed']
 
-    // Fortaleza
+    //Fortaleza
     WITH a, co,
      CASE
        WHEN ((nota-13)/7.0) < 0 THEN 0.0
@@ -356,20 +356,20 @@ def recomendar(id_alumno):
      END AS frac
     WITH a, co, (frac*frac) AS w_mastery
 
-    // Familias del obligatorio
+    //Cursos obligatorios
     OPTIONAL MATCH (co)-[:REL {label:'incluye_tema'}]->(to:Tema)
     WITH a, co, w_mastery, collect(DISTINCT toLower(to.family)) AS famObl
     WHERE size(famObl) > 0
     WITH a, collect({curso:co, w:w_mastery, fam:famObl}) AS obligs
     WHERE size(obligs) > 0
 
-    // Electivos y familias (propios + heredados si los añadiste)
+    //Cursos electivos
     MATCH (ce:Curso {tipo_curso:'electivo'})
     OPTIONAL MATCH (ce)-[:REL {label:'incluye_tema'}]->(te:Tema)
     WITH a, obligs, ce, collect(DISTINCT toLower(te.family)) AS famE
     WHERE size(famE) > 0
 
-    // Preparación usando prerrequisitos
+    //Preparación usando prerrequisitos
     OPTIONAL MATCH (co:Curso {tipo_curso:'obligatorio'})-[:REL {label:'prerrequisito_obl_elec'}]->(ce)
     WITH a, obligs, ce, famE, collect(DISTINCT co) AS prereqs
     WITH a, obligs, ce, famE, [x IN obligs WHERE x.curso IN prereqs | x.w] AS wlist
@@ -378,7 +378,7 @@ def recomendar(id_alumno):
           ELSE reduce(s=0.0, v IN wlist | s+v) / toFloat(size(wlist))
      END AS prep
 
-    // Afinidad (Jaccard ponderado por familias)
+    //Afinidad Jaccard
     UNWIND obligs AS ob
     WITH ce, prep, ob, famE,
      size([k IN ob.fam WHERE k IN famE]) AS inter,
@@ -442,12 +442,12 @@ def recomendacion(id_alumno):
     afinidad_min = float(request.args.get("afinidad_min", 0.30))
 
     q = """
-    // RECOMENDADOR POR FAMILIAS + FILTRO DE RELEVANCIA (sin APOC)
+    //Cursos obligatorios aprobados por el alumno
     MATCH (a:Alumno {id:$id})-[r:REL {label:'inscripcion'}]->(co:Curso {tipo_curso:'obligatorio'})
     WITH a, co, coalesce(toFloat(r.nota), -1) AS nota
     WHERE nota >= 11 OR toLower(coalesce(r.estado,'')) IN ['aprobado','aprobada','passed']
 
-    // Fortaleza
+    //Fortaleza
     WITH a, co,
          CASE
            WHEN ((nota-13)/7.0) < 0 THEN 0.0
@@ -456,7 +456,7 @@ def recomendacion(id_alumno):
          END AS frac
     WITH a, co, (frac*frac) AS w_mastery
 
-    // Familias del obligatorio + facultades del alumno
+    //Facultad del alumno
     OPTIONAL MATCH (co)-[:REL {label:'incluye_tema'}]->(to:Tema)
     OPTIONAL MATCH (co)<-[:REL {label:'ofrece'}]-(ca1:Carrera)<-[:REL {label:'pertenece'}]-(fa1:Facultad)
     WITH a, co, w_mastery,
@@ -464,7 +464,7 @@ def recomendacion(id_alumno):
          collect(DISTINCT fa1.id) AS facsObl
     WHERE size(famObl) > 0
 
-    // Junta obligatorios y lista de facultades (aplanado sin APOC)
+    //Junta obligatorios y lista de facultades
     WITH a,
          collect({curso:co, w:w_mastery, fam:famObl}) AS obligs,
          collect(DISTINCT facsObl) AS facLists
@@ -473,19 +473,19 @@ def recomendacion(id_alumno):
     WITH a, obligs, [x IN facsAll WHERE x IS NOT NULL] AS alumnoFacIds
     WHERE size(obligs) > 0
 
-    // Electivos ofrecidos en las MISMAS facultades
+    //Electivos ofrecidos en la misma facultad
     MATCH (ce:Curso {tipo_curso:'electivo'})
     OPTIONAL MATCH (ca2:Carrera)-[:REL {label:'ofrece'}]->(ce)
     OPTIONAL MATCH (fa2:Facultad)-[:REL {label:'pertenece'}]->(ca2)
     WITH a, obligs, alumnoFacIds, ce, collect(DISTINCT fa2.id) AS facCe
     WHERE size([f IN facCe WHERE f IN alumnoFacIds]) > 0
 
-    // Familias de temas del electivo
+    //Familias de temas del electivo
     OPTIONAL MATCH (ce)-[:REL {label:'incluye_tema'}]->(te:Tema)
     WITH a, obligs, ce, collect(DISTINCT toLower(te.family)) AS famE
     WHERE size(famE) > 0
 
-    // Preparación por prerrequisitos
+    //Preparación por prerrequisitos
     OPTIONAL MATCH (co:Curso {tipo_curso:'obligatorio'})-[:REL {label:'prerrequisito_obl_elec'}]->(ce)
     WITH a, obligs, ce, famE, collect(DISTINCT co) AS prereqs
     WITH a, obligs, ce, famE, [x IN obligs WHERE x.curso IN prereqs | x.w] AS wlist
@@ -494,7 +494,7 @@ def recomendacion(id_alumno):
               ELSE reduce(s=0.0, v IN wlist | s+v) / toFloat(size(wlist))
          END AS prep
 
-    // Afinidad (Jaccard ponderado por familias)
+    //Afinidad Jaccard
     UNWIND obligs AS ob
     WITH ce, prep, ob, famE,
          size([k IN ob.fam WHERE k IN famE]) AS inter,
@@ -506,7 +506,6 @@ def recomendacion(id_alumno):
     WITH ce, prep, sum(part) AS numerator, sum(sim_jaccard) AS denominator
     WITH ce, prep, CASE WHEN denominator=0 THEN 0.0 ELSE numerator/denominator END AS affinity
 
-    // Filtro de afinidad mínima
     WHERE affinity >= $afinidad_min
 
     RETURN
@@ -523,7 +522,7 @@ def recomendacion(id_alumno):
 @app.get("/alumnos/<id_alumno>/recomendaciones_aleatorio")
 def recomendar_aleatorio(id_alumno):
     """
-    Recomendación aleatoria (extra) sobre electivos candidatos.
+    Recomendación aleatoria sobre electivos candidatos.
     ---
     tags:
       - Recomendador
@@ -545,7 +544,6 @@ def recomendar_aleatorio(id_alumno):
     """
     limit = int(request.args.get("limit", 20))
 
-    # Candidatos: electivos relacionados temáticamente con los cursos del alumno
     q = """
     MATCH (a:Alumno {id:$id})-[r:REL {label:'inscripcion'}]->(co:Curso {tipo_curso:'obligatorio'})
     WITH a, co, coalesce(toFloat(r.nota), -1) AS nota
@@ -567,7 +565,6 @@ def recomendar_aleatorio(id_alumno):
     if isinstance(candidatos, dict) and "error" in candidatos:
         return jsonify(candidatos), 500
 
-    # Fisher–Yates / random.shuffle (O(n))
     random.shuffle(candidatos)
 
     return jsonify(candidatos[:limit])

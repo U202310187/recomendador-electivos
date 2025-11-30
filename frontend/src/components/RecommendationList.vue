@@ -15,11 +15,8 @@ const recomendaciones = ref([])
 const estado = ref('Selecciona un modo para ver recomendaciones.')
 const cargando = ref(false)
 const fmt = (n) => (typeof n === 'number' ? n.toFixed(2) : '0.00')
-
-// --- PAGINACIÓN ---
 const pageSize = 5
 const currentPage = ref(1)
-
 const totalPages = computed(() =>
   recomendaciones.value.length === 0
     ? 1
@@ -44,14 +41,11 @@ watch(
       estado.value = 'Aún no hay cursos obligatorios aprobados registrados.'
       return
     }
-
     cargando.value = true
     estado.value = 'Buscando...'
-
     try {
       const data = await fetchRecomendacionesPorModo(nuevoId, nuevoModo)
       recomendaciones.value = Array.isArray(data) ? data : []
-      // cada vez que cambian las recomendaciones, volvemos a la página 1
       currentPage.value = 1
 
       estado.value =
@@ -105,7 +99,6 @@ defineExpose({ fmt })
           </li>
         </ul>
 
-        <!-- Controles de paginación -->
         <div class="pagination" v-if="recomendaciones.length > pageSize">
           <button
             class="page-btn"
@@ -205,7 +198,6 @@ defineExpose({ fmt })
   font-weight: 700;
 }
 
-/* Paginación */
 .pagination {
   margin-top: 1rem;
   display: flex;

@@ -4,8 +4,8 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 
 function handleLogout() {
-  localStorage.removeItem('user') // Borra al usuario
-  router.push('/login') // Lo manda al login
+  localStorage.removeItem('user')
+  router.push('/login') 
 }
 </script>
 
@@ -57,13 +57,12 @@ function handleLogout() {
 .nav-link:hover {
   color: var(--color-text);
 }
-/* Estilo para la ruta activa */
 .router-link-exact-active {
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
 }
 .logout-button {
-  background-color: #ef4444; /* Rojo */
+  background-color: #ef4444;
   color: white;
   border: none;
   padding: 0.5rem 1rem;

@@ -9,13 +9,11 @@ import {
 
 const props = defineProps({ cursoId: String })
 const emit = defineEmits(['curso-seleccionado'])
-
 const detalle = ref(null)
 const temas = ref([])
 const relaciones = ref([])
 const estado = ref('Haz clic en un curso para ver sus detalles.')
 
-// --- LÓGICA DE DIAGNÓSTICO ---
 watch(() => props.cursoId, async (newId) => {
   if (!newId) {
     estado.value = 'Haz clic en un curso para ver sus detalles.'
@@ -25,7 +23,6 @@ watch(() => props.cursoId, async (newId) => {
     return
   }
 
-  // Limpiamos todo
   detalle.value = null
   temas.value = []
   relaciones.value = []
@@ -99,7 +96,7 @@ watch(() => props.cursoId, async (newId) => {
       </span>
     </template>
   </li>
-</ul>
+  </ul>
           <p v-else class="empty-text">No se encontraron relaciones.</p>
         </div>
       </div>
@@ -113,7 +110,6 @@ watch(() => props.cursoId, async (newId) => {
 </template>
 
 <style scoped>
-/* Los estilos no cambian */
 .card {
   background-color: var(--color-card);
   padding: 1.5rem;

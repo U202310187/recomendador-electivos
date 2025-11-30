@@ -10,23 +10,18 @@ export function fetchAlumnos() {
   return getJson('/alumnos')
 }
 
-// --------- RECOMENDACIONES ---------
-// Algoritmo 1 – principal (endpoint /recomendar)
 export function fetchRecomendacionesMain(idAlumno) {
   return getJson(`/alumnos/${idAlumno}/recomendar`)
 }
 
-// Algoritmo 2 – simple por temas (endpoint /recomendaciones)
 export function fetchRecomendacionesSoloTemas(idAlumno) {
   return getJson(`/alumnos/${idAlumno}/recomendaciones`)
 }
 
-// Algoritmo 3 – misma facultad (endpoint /recomendacion)
 export function fetchRecomendacionesMismaFacultad(idAlumno) {
   return getJson(`/alumnos/${idAlumno}/recomendacion`)
 }
 
-// Extra – aleatorio (endpoint /recomendaciones_aleatorio)
 export function fetchRecomendacionesAleatorio(idAlumno) {
   return getJson(`/alumnos/${idAlumno}/recomendaciones_aleatorio`)
 }
@@ -46,21 +41,16 @@ export function fetchRecomendacionesPorModo(idAlumno, modo) {
   }
 }
 
-// ------- CURSOS/APROBADOS ---------
-// Trae los cursos relacionados al alumno usando el endpoint
-// GET /alumnos/<id_alumno>/cursos?rel_type=Directed
 export function fetchCursosAprobados(idAlumno, relType = 'Directed') {
   return getJson(
     `/alumnos/${encodeURIComponent(idAlumno)}/cursos?rel_type=${encodeURIComponent(relType)}`
   )
 }
 
-// Alias que usa el Dashboard (último ciclo = cursos aprobados registrados)
 export function fetchCursosUltimoCiclo(idAlumno) {
   return fetchCursosAprobados(idAlumno, 'Directed')
 }
 
-// ------- DETALLES DE CURSO ---------
 export function fetchCursoDetalle(idCurso) {
   return getJson(`/cursos/${idCurso}`)
 }
