@@ -2,11 +2,12 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { loginPorCodigo } from '../services/auth.service'
+import upcLogo from '@/assets/UPC_logo_transparente.png'
+import sedeMonterrico from '@/assets/sedeMonterrico.jpeg'
 
 const router = useRouter()
 
-// Código de alumno, estado y error
-const codigo = ref('')           // puedes poner 'A_1' aquí para probar rápido
+const codigo = ref('')
 const loading = ref(false)
 const error = ref(null)
 
@@ -22,11 +23,9 @@ async function handleLogin() {
   try {
     loading.value = true
 
-    // 1. Llamamos al backend: GET /alumnos/by_codigo/<codigo>
     const alumno = await loginPorCodigo(limpio)
     console.log('Login OK, alumno:', alumno)
 
-    // 2. Navegamos al dashboard por NOMBRE de ruta
     await router.push({ name: 'Dashboard' })
   } catch (e) {
     console.error('Error en login:', e)
@@ -40,8 +39,12 @@ async function handleLogin() {
 <template>
   <div class="auth-container">
     <div class="auth-card">
+      <img 
+        :src="upcLogo"
+        alt="Logo UPC"
+        class="upc-logo"
+      />
       <h1 class="auth-title">Bienvenido</h1>
-
       <form @submit.prevent="handleLogin">
         <div class="input-group">
           <label for="codigo">Código de alumno</label>
@@ -75,7 +78,18 @@ async function handleLogin() {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background-color: #991b1b; /* Rojo oscuro */
+
+  /* Fondo con imagen */
+  background-image: url('@/assets/sedeMonterrico.jpeg');
+  background-size: cover;          /* que llene la pantalla */
+  background-position: center;     /* centrada */
+  background-repeat: no-repeat;
+  background-attachment: fixed;    /* efecto bonito */
+}
+.upc-logo {
+  width: 160px;          /* ajustable */
+  display: block;
+  margin: 0 auto 1rem;   /* centra + margen inferior */
 }
 .auth-card {
   background-color: var(--color-card, #fff);
@@ -114,15 +128,24 @@ async function handleLogin() {
 .auth-button {
   width: 100%;
   padding: 0.75rem;
-  border: none;
   border-radius: 0.375rem;
-  background-color: var(--color-primary, #2563eb);
-  color: white;
+  background-color: #e4002b; /* rojo MI UPC */
+  color: #ffffff;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   margin-top: 1rem;
+  border: none;
+  transition: all 0.2s ease-in-out;
+  font-family: 'Solano Gothic MVB', 'Solano', sans-serif; /* opcional */
 }
+
+.auth-button:hover:not(:disabled) {
+  background-color: #b30021; /* rojo oscuro */
+  color: #ffffff;
+  transform: translateY(-1px); /* efecto sutil */
+}
+
 .auth-button:disabled {
   opacity: 0.7;
   cursor: default;

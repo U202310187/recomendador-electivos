@@ -18,17 +18,22 @@ function handleLogout() {
 </script>
 
 <template>
+  <link rel="stylesheet" href="https://mi.upc.edu.pe/fonts/solano/solano-font.css" />
+
   <div class="app-layout">
     <header class="navbar">
       <div class="navbar-left">
-        <span class="brand">Recomendador</span>
+        <div class="brand">
+        <img src="@/assets/UPC_logo_transparente.png" alt="UPC Logo" class="brand-logo" />
+        <span>MI UPC&nbsp;|&nbsp;RECOMENDADOR</span>
+        </div>
 
         <RouterLink
           :to="{ name: 'Dashboard' }"
           class="nav-link"
           :class="{ active: isDashboard }"
         >
-          Mi Panel
+          MI PANEL
         </RouterLink>
 
         <RouterLink
@@ -36,16 +41,16 @@ function handleLogout() {
           class="nav-link"
           :class="{ active: isRecommender }"
         >
-          Recomendador
+          RECOMENDADOR
         </RouterLink>
       </div>
 
       <div class="navbar-right">
         <span v-if="alumno" class="alumno-label">
-          {{ alumno.nombre || alumno.id }}
+          Bienvenido, {{ alumno.nombre || alumno.id }}
         </span>
         <button class="logout-button" @click="handleLogout">
-          Cerrar Sesión
+          CERRAR SESIÓN
         </button>
       </div>
     </header>
@@ -64,7 +69,6 @@ function handleLogout() {
   background-color: var(--color-bg);
 }
 
-/* NAVBAR */
 .navbar {
   display: flex;
   align-items: center;
@@ -81,22 +85,49 @@ function handleLogout() {
 }
 
 .brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: 'Solano Gothic MVB', 'Solano', sans-serif;
   font-weight: 700;
   font-size: 1.25rem;
-  color: var(--color-primary, #2563eb);
+  color: #221c63;
+}
+
+.brand-logo {
+  height: 34px; 
+  width: auto;
+  display: block;
 }
 
 .nav-link {
-  font-size: 0.95rem;
-  color: #4b5563;
+  font-family: 'Solano Gothic MVB', 'Solano', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+  font-size: 0.92rem;
+
+  color: #7a7575;
   text-decoration: none;
-  padding-bottom: 0.25rem;
-  border-bottom: 2px solid transparent;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  transition: all 0.2s ease-in-out;
+}
+
+.nav-link:hover {
+  background-color: #e4002b;
+  color: #ffffff;
 }
 
 .nav-link.active {
-  color: #111827;
-  border-color: var(--color-primary, #2563eb);
+  font-family: 'Solano Gothic MVB', 'Solano', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+  color: #e4002b;
+  background-color: transparent;
+  display: flex;
+  align-items: center;
 }
 
 .navbar-right {
@@ -113,12 +144,18 @@ function handleLogout() {
 .logout-button {
   padding: 0.4rem 0.9rem;
   border-radius: 0.375rem;
-  border: none;
-  background-color: #dc2626;
-  color: #fff;
+  border: 2px solid #4b1fda;
+  background-color: #ffffff;
+  color: #4b1fda;
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.logout-button:hover {
+  background-color: #4b1fda;
+  color: #ffffff;
 }
 
 .main-content {

@@ -51,13 +51,13 @@ watch(() => props.cursoId, async (newId) => {
 
 <template>
   <div class="card sticky-card">
-    <h3 class="card-title">Paso 3: Detalle del Curso</h3>
+    <h3 class="card-title">Detalle del Curso</h3>
     <div class="content">
       
       <LoadingSpinner v-if="estado.includes('Cargando')" />
       
       <div v-else-if="estado === 'OK' && detalle" class="details-container">
-        <h4 class="detail-title">{{ detalle.nombre }}</h4>
+        <h4 class="detail-title">Nombre: {{ detalle.nombre }}</h4>
         <ul class="detail-list">
           <li><strong>Tipo:</strong> {{ detalle.tipo_curso }}</li>
           <li><strong>Mención:</strong> {{ detalle.mencion || 'N/A' }}</li>

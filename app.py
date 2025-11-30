@@ -24,157 +24,6 @@ def run_query(cypher, **params):
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/health")
-def health():
-    """
-    Health check
-    ---
-    tags:
-      - Sistema
-    responses:
-      200:
-        description: OK
-        examples:
-          application/json: { "ok": true }
-    """
-    try:
-        run_query("RETURN 1 AS ok")
-        return jsonify({"ok": True})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-@app.post("/login")
-def login():
-    """
-    Login simplificado por código UPC del alumno.
-    ---
-    tags:
-      - Auth
-    parameters:
-      - in: body
-        name: body
-        required: true
-        schema:
-          type: object
-          properties:
-            codigo:
-              type: string
-              example: "U202310187"
-    responses:
-      200:
-        description: Alumno encontrado (devuelve el nodo Alumno completo)
-      400:
-        description: Falta parámetro
-      404:
-        description: Alumno no encontrado
-    """
-    payload = request.get_json() or {}
-    codigo = payload.get("codigo")
-
-    if not codigo:
-        return jsonify({"error": "El campo 'codigo' es obligatorio."}), 400
-
-    q = """
-    MATCH (a:Alumno {codigo:$codigo})
-    RETURN a{.*} AS alumno
-    """
-    data = run_query(q, codigo=codigo)
-
-    # Si run_query devolvió {"error": ...}
-    if isinstance(data, dict) and "error" in data:
-        return jsonify(data), 500
-
-    if not data:
-        return jsonify({"error": "Alumno no encontrado"}), 404
-
-    # En el front puedes guardar alumno.id para llamar al resto de endpoints
-    return jsonify(data[0])
-
-
-@app.get("/cursos")
-def get_cursos():
-    """
-    Lista de cursos
-    ---
-    tags:
-      - Cursos
-    parameters:
-      - in: query
-        name: tipo
-        type: string
-        required: false
-        description: obligatorio | electivo
-      - in: query
-        name: mencion
-        type: string
-        required: false
-      - in: query
-        name: limit
-        type: integer
-        required: false
-        default: 50
-    responses:
-      200:
-        description: Lista de cursos
-    """
-    """?tipo=obligatorio|electivo  ?mencion=...  ?limit=50"""
-    tipo = request.args.get("tipo")
-    mencion = request.args.get("mencion")
-    limit = int(request.args.get("limit", 50))
-
-    where = []
-    if tipo:
-        where.append("c.tipo_curso = $tipo")
-    if mencion:
-        where.append("c.mencion = $mencion")
-    where_clause = ("WHERE " + " AND ".join(where)) if where else ""
-
-    q = f"""
-    MATCH (c:Curso)
-    {where_clause}
-    RETURN c.id AS id, c.codigo AS codigo, c.nombre AS nombre,
-           c.tipo_curso AS tipo_curso, c.mencion AS mencion, c.ciclo_tipo_curso AS ciclo
-    ORDER BY c.nombre
-    LIMIT $limit
-    """
-    return jsonify(run_query(q, tipo=tipo, mencion=mencion, limit=limit))
-
-@app.get("/temas")
-def get_temas():
-    """
-    Lista de temas
-    ---
-    tags:
-      - Temas
-    responses:
-      200:
-        description: Lista de temas
-    """
-    q = """
-    MATCH (t:Tema)
-    RETURN t{.*} AS tema
-    ORDER BY t.nombre
-    """
-    return jsonify(run_query(q))
-
-@app.get("/menciones")
-def get_menciones():
-    """
-    Lista de menciones
-    ---
-    tags:
-      - Menciones
-    responses:
-      200:
-        description: Lista de menciones
-    """
-    q = """
-    MATCH (m:Mencion)
-    RETURN m{.*} AS mencion
-    ORDER BY m.nombre
-    """
-    return jsonify(run_query(q))
-
 @app.get("/cursos/<id_curso>")
 def get_curso(id_curso):
     """
@@ -232,38 +81,6 @@ def get_temas_de_curso(id_curso):
     """
     return jsonify(run_query(q, id=id_curso, rel=rel_type))
 
-@app.get("/menciones/<nombre>/cursos")
-def get_cursos_por_mencion(nombre):
-    """
-    Cursos asociados a una mención
-    ---
-    tags:
-      - Menciones
-    parameters:
-      - in: path
-        name: nombre
-        type: string
-        required: true
-        description: Nombre de la mención
-      - in: query
-        name: rel_type
-        type: string
-        default: Directed
-        required: false
-        description: Tipo de relación usado en r.type
-    responses:
-      200:
-        description: Lista de cursos asociados a la mención
-    """
-    rel_type = request.args.get("rel_type", "Directed")
-    q = """
-    MATCH (m:Mencion {nombre:$nom})<-[r:REL]-(c:Curso)
-    WHERE r.type = $rel
-    RETURN c{.*} AS curso
-    ORDER BY c.nombre
-    """
-    return jsonify(run_query(q, nom=nombre, rel=rel_type))
-
 @app.get("/cursos/<id_curso>/relaciones")
 def get_relaciones_de_curso(id_curso):
     """
@@ -287,82 +104,6 @@ def get_relaciones_de_curso(id_curso):
     RETURN type(r) AS relNeo4j, r.type AS relCSV, n{.*} AS vecino, startNode(r).id AS from, endNode(r).id AS to
     """
     return jsonify(run_query(q, id=id_curso))
-
-@app.get("/stats")
-def stats():
-    """
-    Estadísticas generales
-    ---
-    tags:
-      - Sistema
-    responses:
-      200:
-        description: Conteos de nodos y relaciones
-    """
-    q = """
-    CALL {
-      MATCH (c:Curso) RETURN count(c) AS cursos
-    }
-    CALL {
-      MATCH (t:Tema) RETURN count(t) AS temas
-    }
-    CALL {
-      MATCH (m:Mencion) RETURN count(m) AS menciones
-    }
-    CALL {
-      MATCH ()-[r]->() RETURN count(r) AS relaciones
-    }
-    RETURN cursos, temas, menciones, relaciones
-    """
-    return jsonify(run_query(q)[0])
-
-@app.get("/grafo")
-def grafo():
-    """
-    Grafo simplificado para visualización
-    ---
-    tags:
-      - Grafo
-    parameters:
-      - in: query
-        name: limit
-        type: integer
-        required: false
-        default: 200
-        description: Límite de relaciones a devolver para evitar cargas grandes
-    responses:
-      200:
-        description: Nodos y relaciones para visualización
-        examples:
-          application/json:
-            nodes:
-              - id: CURSO001
-                nombre: Matemática I
-                labels: ["Curso"]
-            edges:
-              - from: CURSO001
-                to: TEMA045
-                rel: REL
-                relCSV: incluye_tema
-    """
-    """?limit=200  — devuelve nodos + relaciones simples para pintar en el front"""
-    limit = int(request.args.get("limit", 200))
-    q = """
-    MATCH (a)-[r]->(b)
-    WITH a, r, b LIMIT $limit
-    RETURN
-      collect(DISTINCT a{.id, .nombre, labels:labels(a)}) AS sourceNodes,
-      collect(DISTINCT b{.id, .nombre, labels:labels(b)}) AS targetNodes,
-      collect({from:startNode(r).id, to:endNode(r).id, rel:type(r), relCSV:r.type}) AS rels
-    """
-    rows = run_query(q, limit=limit)[0]
-    # unir nodos fuente y destino en un solo arreglo único
-    seen, nodes = set(), []
-    for n in rows["sourceNodes"] + rows["targetNodes"]:
-        if n["id"] not in seen:
-            seen.add(n["id"])
-            nodes.append(n)
-    return jsonify({"nodes": nodes, "edges": rows["rels"]})
 
 @app.get("/alumnos")
 def get_alumnos():
@@ -428,31 +169,6 @@ def get_alumnos():
     LIMIT $limit
     """
     return jsonify(run_query(q, q=qtext, skip=skip, limit=limit))
-
-@app.get("/alumnos/<id_alumno>")
-def get_alumno(id_alumno):
-    """
-    Detalle de alumno
-    ---
-    tags:
-      - Alumnos
-    parameters:
-      - in: path
-        name: id_alumno
-        type: string
-        required: true
-    responses:
-      200:
-        description: Alumno encontrado
-      404:
-        description: No encontrado
-    """
-    q = """
-    MATCH (a:Alumno {id:$id})
-    RETURN a{.*} AS alumno
-    """
-    data = run_query(q, id=id_alumno)
-    return (jsonify(data[0]) if data else (jsonify({"error":"No encontrado"}), 404))
 
 @app.get("/alumnos/by_codigo/<codigo>")
 def get_alumno_por_codigo(codigo):
@@ -526,47 +242,6 @@ def get_cursos_de_alumno(id_alumno):
     """
     return jsonify(run_query(q, id=id_alumno, rel=rel_type))
 
-@app.get("/alumnos/<id_alumno>/temas")
-def get_temas_de_alumno(id_alumno):
-    """
-    Temas alcanzados por un alumno a través de cursos
-    ---
-    tags:
-      - Alumnos
-    parameters:
-      - name: id_alumno
-        in: path
-        type: string
-        required: true
-        description: ID del alumno
-      - name: rel_type
-        in: query
-        type: string
-        required: false
-        default: Directed
-        description: Tipo lógico de relación almacenado en r.type
-    responses:
-      200:
-        description: Lista de temas vinculados al alumno
-        examples:
-          application/json:
-            - tema:
-                id: TEMA045
-                nombre: Derivadas
-    """
-    """Temas alcanzados por el alumno vía cursos relacionados."""
-    rel_type = request.args.get("rel_type", "Directed")
-    q = """
-    MATCH (a:Alumno {id:$id})-[r1:REL]-(c:Curso)
-    WHERE r1.type = $rel
-    MATCH (c)-[r2:REL]->(t:Tema)
-    WHERE r2.type = $rel
-    WITH DISTINCT t
-    ORDER BY t.nombre
-    RETURN t{.*} AS tema
-    """
-    return jsonify(run_query(q, id=id_alumno, rel=rel_type))
-
 @app.get("/alumnos/<id_alumno>/recomendaciones")
 def recomendar_cursos(id_alumno):
     """
@@ -630,73 +305,6 @@ def recomendar_cursos(id_alumno):
     RETURN c2{.*} AS curso, temasCompartidos, menciones
     ORDER BY temasCompartidos DESC, curso.nombre
     LIMIT $limit
-    """
-    return jsonify(run_query(q, id=id_alumno, rel=rel_type, limit=limit))
-
-@app.get("/alumnos/<id_alumno>/grafo")
-def grafo_alumno(id_alumno):
-    """
-    Subgrafo del alumno (nodos y aristas para visualización)
-    ---
-    tags:
-      - Grafo
-    parameters:
-      - name: id_alumno
-        in: path
-        type: string
-        required: true
-        description: ID del alumno (ej. "ALU_001")
-      - name: rel_type
-        in: query
-        type: string
-        required: false
-        default: Directed
-        description: Valor lógico almacenado en r.type a filtrar
-      - name: limit
-        in: query
-        type: integer
-        required: false
-        default: 300
-        description: Límite de relaciones para acotar el subgrafo
-    responses:
-      200:
-        description: Nodos y aristas del subgrafo del alumno
-        examples:
-          application/json:
-            nodes:
-              - id: ALU_001
-                nombre: "Juan Pérez"
-                labels: ["Alumno"]
-              - id: CUR_010
-                nombre: "Algoritmos"
-                labels: ["Curso"]
-            edges:
-              - from: ALU_001
-                to: CUR_010
-                rel: "REL"
-                relCSV: "inscripcion"
-    """
-    rel_type = request.args.get("rel_type", "Directed")
-    limit = int(request.args.get("limit", 300))
-    q = """
-    MATCH (a:Alumno {id:$id})-[r1:REL]-(n1)
-WHERE r1.type = $rel
-WITH a, r1, n1
-LIMIT $limit
-
-OPTIONAL MATCH (n1)-[r2:REL]->(n2)
-WHERE r2.type = $rel
-
-WITH a,
-     collect(DISTINCT r1) + collect(DISTINCT r2) AS rels,
-     collect(DISTINCT n1) + collect(DISTINCT n2) AS allNodes
-
-UNWIND allNodes AS n
-WITH collect(DISTINCT n) AS nodes, rels
-
-RETURN
-  [x IN nodes | x{.id, .nombre, labels:labels(x)}] AS nodes,
-  [r IN rels  | {from:startNode(r).id, to:endNode(r).id, rel:type(r), relCSV:r.type}] AS edges
     """
     return jsonify(run_query(q, id=id_alumno, rel=rel_type, limit=limit))
 
@@ -795,7 +403,7 @@ def recomendar(id_alumno):
 @app.get("/alumnos/<id_alumno>/recomendacion")
 def recomendacion(id_alumno):
     """
-    Recomendación que limita electivos a las mismas facultades del alumno y permite fijar un umbral mínimo de afinidad.
+    Recomendación que limita electivos a las mismas facultades del alumno.
     ---
     tags:
       - Recomendador
@@ -963,42 +571,6 @@ def recomendar_aleatorio(id_alumno):
     random.shuffle(candidatos)
 
     return jsonify(candidatos[:limit])
-
-@app.get("/alumnos/by_codigo/<codigo>/cursos_aprobados")
-def get_cursos_aprobados_por_codigo(codigo):
-    """
-    Cursos obligatorios aprobados por un alumno (búsqueda por código)
-    ---
-    tags:
-      - Alumnos
-    parameters:
-      - name: codigo
-        in: path
-        type: string
-        required: true
-        description: Código del alumno (ej. "A_1")
-    responses:
-      200:
-        description: Lista de cursos obligatorios aprobados
-        examples:
-          application/json:
-            - curso:
-                id: C_1234
-                nombre: CURSO-01-001
-                tipo_curso: obligatorio
-              relacion:
-                type: APROBADO
-                nota: 15
-    """
-    q = """
-    MATCH (a:Alumno {id: $codigo})-[r:REL]->(c:Curso)
-    WHERE r.type = 'APROBADO'
-      AND c.tipo_curso = 'obligatorio'
-    RETURN c{.*} AS curso, r{.*} AS relacion
-    ORDER BY c.nombre
-    """
-    return jsonify(run_query(q, codigo=codigo))
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

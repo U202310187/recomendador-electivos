@@ -91,8 +91,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* LOS ESTILOS NO CAMBIAN, DEJA LOS QUE YA TENÍAS */
-/* ... (todo el bloque <style scoped> anterior) ... */
 .title {
   font-size: 2.25rem; font-weight: 700; color: #111827; margin-bottom: 0.5rem;
 }
@@ -153,15 +151,22 @@ onMounted(async () => {
 .auth-button {
   width: auto;
   padding: 0.75rem 1.5rem;
-  border: none;
   border-radius: 0.375rem;
-  background-color: var(--color-primary);
-  color: white;
+  background-color: #e4002b;      /* rojo inicial */
+  color: #ffffff;
   font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
+  font-weight: 700;
   text-decoration: none;
+  cursor: pointer;
   display: inline-block;
+  transition: all 0.2s ease-in-out;
+  font-family: 'Solano Gothic MVB', 'Solano', sans-serif; /* opcional, igual que MI UPC */
+}
+
+.auth-button:hover {
+  background-color: #b30021;   /* rojo más oscuro */
+  color: #ffffff;              /* mantiene blanco */
+  transform: translateY(-1px); /* efecto premium opcional */
 }
 .cta-card {
   text-align: center;
